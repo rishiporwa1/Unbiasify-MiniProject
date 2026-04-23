@@ -1,7 +1,10 @@
 from django.urls import path
-from .views import analyze
+from . import views
 
 urlpatterns = [
-    path("analyze/", analyze),
+    path('register/', views.register),
+    path('login/', views.login),
+    path('analyze/', views.analyze),
+    path('history/', views.history),
+    path('profile/', views.profile),
 ]
-
