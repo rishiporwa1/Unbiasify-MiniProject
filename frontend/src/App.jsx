@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import LiquidEther from "./Components/LiquidEther";
 
-const API = "http://127.0.0.1:8000/api";
+const API = "https://unbiasify-miniproject.onrender.com/api";
 
 // ─── AXIOS INSTANCE ────────────────────────────────────────────────────────
 const api = axios.create({ baseURL: API });
