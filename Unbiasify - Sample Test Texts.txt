@@ -1,0 +1,44 @@
+Unbiasify - Sample Test Texts
+
+--- POSITIVE TEXTS ---
+I absolutely loved this product, it exceeded all my expectations.
+The service was amazing and the staff were very helpful.
+This app is beautifully designed and very easy to use.
+I feel very happy and satisfied with the results.
+
+--- NEGATIVE TEXTS ---
+This was a terrible experience, I regret using it.
+The product quality is very poor and disappointing.
+I am extremely unhappy with the service.
+Everything about this was frustrating and annoying.
+
+--- NEUTRAL TEXTS ---
+The product was delivered on time.
+It works as expected without any major issues.
+The meeting is scheduled for tomorrow.
+This is a simple and basic tool.
+
+--- MIXED / REALISTIC TEXTS ---
+The design is good but the performance is very slow.
+I liked the idea, but execution could have been better.
+The app looks nice, however it crashes sometimes.
+Customer support was helpful, but delivery was delayed.
+
+--- BIAS-LIKE TEXTS ---
+Gender Bias:
+Women are not good at technical jobs.
+Men are naturally better leaders than women.
+
+Social Bias:
+People from small towns are not very smart.
+Rich people are always more successful.
+
+Positive Bias:
+Young people are more innovative than older generations.
+Highly educated people make better decisions.
+
+--- EDGE CASES ---
+I don’t think this is bad.
+Not good, not bad, just okay.
+Wow… this is something.
+Great job ruining everything.
