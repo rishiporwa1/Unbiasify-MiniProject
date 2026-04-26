@@ -41,13 +41,21 @@ def register(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
-    username = request.data.get('username', '').strip()
+    identifier = request.data.get('username', '').strip()
     password = request.data.get('password', '').strip()
 
-    if not username or not password:
-        return Response({'error': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not identifier or not password:
+        return Response({'error': 'Username/Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    user = authenticate(username=username, password=password)
+    # Try username first, then email
+    user = authenticate(username=identifier, password=password)
+    if user is None:
+        try:
+            user_obj = User.objects.get(email=identifier)
+            user = authenticate(username=user_obj.username, password=password)
+        except User.DoesNotExist:
+            pass
+
     if user is None:
         return Response({'error': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
 

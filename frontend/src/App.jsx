@@ -155,7 +155,7 @@ function LoginPage({ setPage, onLogin }) {
         <div className="flex flex-col gap-4">
           <input
             name="username"
-            placeholder="Username"
+            placeholder="Username or Email"
             value={form.username}
             onChange={handle}
             className="w-full p-3 rounded-lg bg-black/30 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-400"
