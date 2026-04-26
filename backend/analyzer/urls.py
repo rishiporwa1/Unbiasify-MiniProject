@@ -7,4 +7,8 @@ urlpatterns = [
     path('analyze/', views.analyze),
     path('history/', views.history),
     path('profile/', views.profile),
+    path('profile/edit/', views.edit_profile),
+    path('forgot-password/', views.forgot_password),
+    path('reset-password/', views.reset_password),
+    path('change-password/', views.change_password),
 ]
