@@ -170,6 +170,19 @@ def edit_profile(request):
     return Response({'username': user.username, 'email': user.email})
 
 
+# DELETE ACCOUNT
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_account(request):
+    password = request.data.get('password', '').strip()
+    if not password:
+        return Response({'error': 'Password is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not request.user.check_password(password):
+        return Response({'error': 'Incorrect password.'}, status=status.HTTP_400_BAD_REQUEST)
+    request.user.delete()
+    return Response({'message': 'Account deleted successfully.'})
+
+
 # ANALYZE
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

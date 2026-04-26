@@ -502,7 +502,7 @@ function HomePage({ user, setPage }) {
 }
 
 // PROFILE PAGE
-function ProfilePage({ user, onProfileUpdate }) {
+function ProfilePage({ user, onProfileUpdate, onLogout }) {
   const [profile, setProfile] = useState(null);
   const [history, setHistory] = useState([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -522,6 +522,12 @@ function ProfilePage({ user, onProfileUpdate }) {
   const [passLoading, setPassLoading] = useState(false);
   const [passMsg, setPassMsg] = useState("");
   const [passError, setPassError] = useState("");
+
+  // Delete account state
+  const [showDelete, setShowDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -566,6 +572,20 @@ function ProfilePage({ user, onProfileUpdate }) {
       setEditError(err.response?.data?.error || "Update failed.");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const submitDelete = async () => {
+    setDeleteError("");
+    if (!deletePassword) { setDeleteError("Enter your password to confirm."); return; }
+    setDeleteLoading(true);
+    try {
+      await api.post("/delete-account/", { password: deletePassword });
+      onLogout();
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || "Failed to delete account.");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -624,6 +644,12 @@ function ProfilePage({ user, onProfileUpdate }) {
                 >
                   {changingPass ? "Cancel" : "Change Password"}
                 </button>
+                <button
+                  onClick={() => { setShowDelete(!showDelete); setEditing(false); setChangingPass(false); setDeleteError(""); setDeletePassword(""); }}
+                  className="px-4 py-1.5 rounded-full bg-red-500/10 border border-red-400/30 text-red-400 text-sm hover:bg-red-500/20 transition"
+                >
+                  {showDelete ? "Cancel" : "Delete Account"}
+                </button>
               </div>
             </div>
 
@@ -681,6 +707,29 @@ function ProfilePage({ user, onProfileUpdate }) {
                   className="w-full py-2.5 rounded-full bg-white text-black font-medium hover:bg-white/90 transition disabled:opacity-50"
                 >
                   {passLoading ? "Updating..." : "Update Password"}
+                </button>
+              </div>
+            )}
+
+            {/* Delete Account */}
+            {showDelete && (
+              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-400/20 flex flex-col gap-3">
+                <p className="text-red-400 text-xs uppercase tracking-widest mb-1">⚠ Delete Account</p>
+                <p className="text-white/50 text-sm">This will permanently delete your account and all your data. This cannot be undone.</p>
+                {deleteError && <div className="px-3 py-2 rounded-lg bg-red-500/20 border border-red-400/40 text-red-300 text-sm">{deleteError}</div>}
+                <PasswordInput
+                  name="delete_password"
+                  placeholder="Enter your password to confirm"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitDelete()}
+                />
+                <button
+                  onClick={submitDelete}
+                  disabled={deleteLoading}
+                  className="w-full py-2.5 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition disabled:opacity-50"
+                >
+                  {deleteLoading ? "Deleting..." : "Yes, Delete My Account"}
                 </button>
               </div>
             )}
@@ -785,7 +834,7 @@ export default function App() {
       {page === "login" && <LoginPage setPage={setPage} onLogin={onLogin} />}
       {page === "register" && <RegisterPage setPage={setPage} onLogin={onLogin} />}
       {page === "forgot" && <ForgotPasswordPage setPage={setPage} />}
-      {page === "profile" && user && <ProfilePage user={user} onProfileUpdate={onProfileUpdate} />}
+      {page === "profile" && user && <ProfilePage user={user} onProfileUpdate={onProfileUpdate} onLogout={onLogout} />}
       {page === "profile" && !user && (
         <div className="flex-grow flex items-center justify-center">
           <p className="text-white/50">Please login to view your profile.</p>
