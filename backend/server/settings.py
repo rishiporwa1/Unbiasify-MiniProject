@@ -2,8 +2,12 @@ from pathlib import Path
 from datetime import timedelta
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env
+load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-dev-key-change-this')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
@@ -17,7 +21,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'rest_framework_simplejwt',
     'corsheaders',
     'analyzer',
 ]
@@ -32,7 +35,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -55,7 +57,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'server.wsgi.application'
 
-# DATABASE — PostgreSQL on Render, SQLite locally
+# DATABASE — Supabase PostgreSQL when DATABASE_URL is set; clean SQLite locally
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
     DATABASES = {
@@ -71,14 +73,14 @@ else:
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'analyzer.authentication.ClerkAuthentication',
     ),
 }
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-}
+# Clerk Configuration
+CLERK_ISSUER = os.environ.get('CLERK_ISSUER', '')
+CLERK_JWKS_URL = os.environ.get('CLERK_JWKS_URL', '')
+CLERK_SECRET_KEY = os.environ.get('CLERK_SECRET_KEY', '')
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -93,10 +95,3 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', '')

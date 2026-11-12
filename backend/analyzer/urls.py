@@ -12,4 +12,9 @@ urlpatterns = [
     path('reset-password/', views.reset_password),
     path('change-password/', views.change_password),
     path('delete-account/', views.delete_account),
+    # New endpoints
+    path('feedback/', views.analyze_feedback),
+    path('history/<int:pk>/delete/', views.delete_analysis),
+    path('export/', views.export_history),
+    path('dashboard/', views.dashboard),
 ]
