@@ -44,8 +44,9 @@ function fmtDateTime(iso) {
 function IconFluxLogo() {
   return (
     <div className="w-8 h-8 rounded-xl bg-[#d2f84b] flex items-center justify-center shrink-0 shadow-sm">
-      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#16171a]">
-        <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none" stroke="#16171a">
+        <path d="M6 7V11C6 14.314 8.686 17 12 17C15.314 17 18 14.314 18 11V7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="10" r="2" fill="#16171a" stroke="none" />
       </svg>
     </div>
   );
