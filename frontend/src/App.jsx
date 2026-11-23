@@ -1,21 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
-import { useUser, useAuth, SignIn, SignUp, UserButton, SignInButton, SignUpButton } from "@clerk/react";
 
 const rawApi = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api").trim().replace(/\/+$/, "");
 const API = rawApi.endsWith("/api") ? rawApi : `${rawApi}/api`;
 
 const api = axios.create({ baseURL: API });
-api.interceptors.request.use(async (config) => {
-  if (typeof window !== "undefined" && window.__clerk_getToken) {
-    try {
-      const token = await window.__clerk_getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-        return config;
-      }
-    } catch {}
-  }
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -121,6 +111,65 @@ function IconEdit() {
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
     </svg>
+  );
+}
+
+function IconEye({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  );
+}
+
+function IconEyeOff({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+    </svg>
+  );
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder = "Enter password",
+  id,
+  name,
+  required = true,
+  minLength,
+  autoComplete,
+  className = "",
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative w-full">
+      <input
+        type={show ? "text" : "password"}
+        id={id}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        minLength={minLength}
+        autoComplete={autoComplete}
+        className={cn(
+          "w-full rounded-2xl bg-[#f9fafb] border border-[#e8eaee] px-4 py-3 pr-11 text-xs font-semibold text-[#111214] placeholder-[#8c9099] focus:outline-none focus:ring-2 focus:ring-[#d2f84b] focus:border-transparent transition",
+          className
+        )}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        tabIndex={-1}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8c9099] hover:text-[#111214] p-1.5 rounded-lg transition cursor-pointer"
+        title={show ? "Hide password" : "Show password"}
+      >
+        {show ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
+      </button>
+    </div>
   );
 }
 
@@ -997,9 +1046,9 @@ function HistoryPage({ setPage, setResultState }) {
   );
 }
 
-// ─── PROFILE PAGE (FUNCTIONAL USERNAME CHANGE) ────────────────────────────────
+// ─── PROFILE PAGE (FUNCTIONAL USERNAME & PASSWORD CHANGE) ────────────────
 
-function ProfilePage({ user, onProfileUpdate, onLogout }) {
+function ProfilePage({ user, onProfileUpdate, onLogout, setPage }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(Boolean(user));
   const [isEditing, setIsEditing] = useState(false);
@@ -1007,6 +1056,15 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+
+  // Change Password state
+  const [isChangingPwd, setIsChangingPwd] = useState(false);
+  const [oldPwd, setOldPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [pwdSaving, setPwdSaving] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState("");
+  const [pwdError, setPwdError] = useState("");
 
   const isGuest = !user;
 
@@ -1072,6 +1130,45 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
     }
   };
 
+  const handleSavePassword = async (e) => {
+    e.preventDefault();
+    setPwdError("");
+    setPwdMsg("");
+
+    if (!oldPwd.trim() || !newPwd.trim()) {
+      setPwdError("Both current and new passwords are required.");
+      return;
+    }
+    if (newPwd.length < 8) {
+      setPwdError("New password must be at least 8 characters long.");
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      setPwdError("New passwords do not match.");
+      return;
+    }
+
+    setPwdSaving(true);
+    try {
+      const res = await api.post("/change-password/", {
+        old_password: oldPwd.trim(),
+        new_password: newPwd.trim(),
+      });
+      setPwdMsg(res.data.message || "Password changed successfully!");
+      setOldPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+      setTimeout(() => {
+        setIsChangingPwd(false);
+        setPwdMsg("");
+      }, 2500);
+    } catch (err) {
+      setPwdError(err.response?.data?.error || "Failed to change password. Verify your current password.");
+    } finally {
+      setPwdSaving(false);
+    }
+  };
+
   const displayName = profile?.username || (isGuest ? "Guest User" : user?.username || "User");
 
   return (
@@ -1084,15 +1181,16 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
           <p className="text-xs font-medium text-[#717682] mt-1">
             {isGuest
               ? "You are currently running in guest mode. Analyses are stored in this browser session only."
-              : "Manage your Unbiasify identity and profile details."}
+              : "Manage your Unbiasify identity, credentials, and profile details."}
           </p>
         </div>
         {isGuest && (
-          <SignInButton mode="modal">
-            <button className="px-5 py-2 rounded-full bg-[#16171a] text-white text-xs font-bold hover:bg-black transition cursor-pointer">
-              Sign In to Sync
-            </button>
-          </SignInButton>
+          <button
+            onClick={() => setPage("login")}
+            className="px-5 py-2 rounded-full bg-[#16171a] text-white text-xs font-bold hover:bg-black transition cursor-pointer"
+          >
+            Sign In to Sync
+          </button>
         )}
       </div>
 
@@ -1125,10 +1223,17 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
                 </div>
               </div>
 
-              {isGuest && (
+              {isGuest ? (
                 <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#d2f84b]/30 text-[#2e5200]">
                   Guest User
                 </span>
+              ) : (
+                <button
+                  onClick={() => { setIsChangingPwd(!isChangingPwd); setPwdError(""); setPwdMsg(""); }}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#16171a] border border-[#e8eaee] transition cursor-pointer"
+                >
+                  {isChangingPwd ? "Close Password Form" : "Change Password"}
+                </button>
               )}
             </div>
 
@@ -1140,7 +1245,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
             </div>
           </BentoCard>
 
-          {/* Edit Username Card — ONLY DISPLAYED WHEN 'isEditing' IS TRUE */}
+          {/* Edit Username Card */}
           {isEditing && (
             <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md">
               <div className="flex items-center justify-between">
@@ -1194,8 +1299,88 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
             </BentoCard>
           )}
 
+          {/* Change Password Card (Only for Authenticated Users) */}
+          {!isGuest && isChangingPwd && (
+            <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-extrabold text-[#111214]">Change Password</h3>
+                <button
+                  onClick={() => setIsChangingPwd(false)}
+                  className="text-xs font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-[#5f6672] font-medium">
+                Ensure your account is protected with a secure password of at least 8 characters.
+              </p>
+
+              <form onSubmit={handleSavePassword} className="space-y-3.5 pt-2">
+                <ErrorMsg msg={pwdError} />
+                <SuccessMsg msg={pwdMsg} />
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                    Current Password
+                  </label>
+                  <PasswordInput
+                    value={oldPwd}
+                    onChange={(e) => setOldPwd(e.target.value)}
+                    placeholder="Enter your current password"
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                    New Password (min 8 chars)
+                  </label>
+                  <PasswordInput
+                    value={newPwd}
+                    onChange={(e) => setNewPwd(e.target.value)}
+                    placeholder="Enter new secure password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                    Confirm New Password
+                  </label>
+                  <PasswordInput
+                    value={confirmPwd}
+                    onChange={(e) => setConfirmPwd(e.target.value)}
+                    placeholder="Repeat new password"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={pwdSaving}
+                    className="px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 cursor-pointer"
+                  >
+                    {pwdSaving ? "Updating…" : "Update Password"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingPwd(false)}
+                    className="px-4 py-2.5 rounded-full text-xs font-bold text-[#5f6672] hover:bg-[#f4f5f7] transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </BentoCard>
+          )}
+
           {/* Guest Sign-In Callout */}
-          {isGuest && (
+          {isGuest ? (
             <BentoCard className="p-6 bg-[#f7fde6] border border-[#dcf589] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h4 className="font-extrabold text-sm text-[#111214]">Create an Account or Sign In</h4>
@@ -1203,12 +1388,22 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
                   Signed-in users get persistent bias history, aggregate analytics dashboards, and cloud sync.
                 </p>
               </div>
-              <SignInButton mode="modal">
-                <button className="px-5 py-2.5 rounded-full bg-[#16171a] text-white text-xs font-extrabold hover:bg-black transition whitespace-nowrap cursor-pointer">
-                  Sign In / Register
-                </button>
-              </SignInButton>
+              <button
+                onClick={() => setPage("login")}
+                className="px-5 py-2.5 rounded-full bg-[#16171a] text-white text-xs font-extrabold hover:bg-black transition whitespace-nowrap cursor-pointer"
+              >
+                Sign In / Register
+              </button>
             </BentoCard>
+          ) : (
+            <div className="pt-4 flex justify-end">
+              <button
+                onClick={onLogout}
+                className="px-5 py-2.5 rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold transition cursor-pointer"
+              >
+                Sign Out of Account
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -1216,24 +1411,514 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
   );
 }
 
-// ─── AUTH MODAL SHELL ─────────────────────────────────────────────────────────
+// ─── NATIVE AUTH PAGES ──────────────────────────────────────────────────
 
-function AuthPage({ mode = "login" }) {
+function LoginPage({ setPage, onLogin }) {
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!identifier.trim() || !password.trim()) {
+      setError("Please provide your username/email and password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post("/login/", {
+        username: identifier.trim(),
+        password: password.trim(),
+      });
+      localStorage.setItem("access", res.data.access);
+      localStorage.setItem("refresh", res.data.refresh);
+      onLogin({ username: res.data.username, email: res.data.email });
+      setPage("home");
+    } catch (err) {
+      setError(err.response?.data?.error || "Invalid username or password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto py-12">
-      <BentoCard className="p-8 text-center">
-        <h2 className="text-2xl font-black text-[#111214] mb-2">
-          {mode === "login" ? "Sign In to Unbiasify" : "Create Account"}
-        </h2>
-        <p className="text-xs font-medium text-[#717682] mb-6">
-          Authenticate using Clerk to sync your analysis history.
-        </p>
-        <div className="flex justify-center">
-          {mode === "login" ? (
-            <SignIn routing="hash" signUpUrl="#/register" />
-          ) : (
-            <SignUp routing="hash" signInUrl="#/login" />
+    <div className="max-w-md mx-auto py-8">
+      <BentoCard className="p-8">
+        <div className="text-center mb-6">
+          <div className="inline-flex mb-3">
+            <IconFluxLogo />
+          </div>
+          <h2 className="text-2xl font-black text-[#111214] tracking-tight">Sign In to Unbiasify</h2>
+          <p className="text-xs font-medium text-[#717682] mt-1">
+            Access your saved bias analyses, aggregate metrics, and history.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <ErrorMsg msg={error} />
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+              Username or Email
+            </label>
+            <input
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="e.g. researcher@unbiasify.org"
+              required
+              autoFocus
+              className="w-full rounded-2xl bg-[#f9fafb] border border-[#e8eaee] px-4 py-3 text-xs font-semibold text-[#111214] placeholder-[#8c9099] focus:outline-none focus:ring-2 focus:ring-[#d2f84b] focus:border-transparent transition"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099]">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={() => setPage("forgot")}
+                className="text-xs font-bold text-[#5f6672] hover:text-[#111214] transition cursor-pointer"
+              >
+                Forgot password?
+              </button>
+            </div>
+            <PasswordInput
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer mt-2"
+          >
+            {loading ? <Spinner size="sm" /> : <span>Sign In</span>}
+          </button>
+        </form>
+
+        <div className="mt-6 pt-5 border-t border-[#f0f2f5] text-center space-y-2">
+          <p className="text-xs font-medium text-[#717682]">
+            Don't have an account?{" "}
+            <button
+              onClick={() => setPage("register")}
+              className="font-extrabold text-[#111214] hover:underline cursor-pointer"
+            >
+              Create Account
+            </button>
+          </p>
+          <button
+            onClick={() => setPage("home")}
+            className="text-[11px] font-bold text-[#8c9099] hover:text-[#111214] transition cursor-pointer block mx-auto"
+          >
+            ← Continue as Guest
+          </button>
+        </div>
+      </BentoCard>
+    </div>
+  );
+}
+
+function RegisterPage({ setPage, onLogin }) {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!username.trim() || !email.trim() || !password.trim()) {
+      setError("All fields are required.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.post("/register/", {
+        username: username.trim(),
+        email: email.trim(),
+        password: password.trim(),
+      });
+      localStorage.setItem("access", res.data.access);
+      localStorage.setItem("refresh", res.data.refresh);
+      onLogin({ username: res.data.username, email: res.data.email });
+      setPage("home");
+    } catch (err) {
+      setError(err.response?.data?.error || "Registration failed. Try a different username or email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto py-8">
+      <BentoCard className="p-8">
+        <div className="text-center mb-6">
+          <div className="inline-flex mb-3">
+            <IconFluxLogo />
+          </div>
+          <h2 className="text-2xl font-black text-[#111214] tracking-tight">Create Account</h2>
+          <p className="text-xs font-medium text-[#717682] mt-1">
+            Join Unbiasify to store your bias findings and track neutrality trends.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <ErrorMsg msg={error} />
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+              Username
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="e.g. alex_rivera"
+              required
+              autoFocus
+              className="w-full rounded-2xl bg-[#f9fafb] border border-[#e8eaee] px-4 py-3 text-xs font-semibold text-[#111214] placeholder-[#8c9099] focus:outline-none focus:ring-2 focus:ring-[#d2f84b] focus:border-transparent transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. alex@example.com"
+              required
+              className="w-full rounded-2xl bg-[#f9fafb] border border-[#e8eaee] px-4 py-3 text-xs font-semibold text-[#111214] placeholder-[#8c9099] focus:outline-none focus:ring-2 focus:ring-[#d2f84b] focus:border-transparent transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+              Password (min 8 chars)
+            </label>
+            <PasswordInput
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create strong password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+              Confirm Password
+            </label>
+            <PasswordInput
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repeat your password"
+              autoComplete="new-password"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer mt-2"
+          >
+            {loading ? <Spinner size="sm" /> : <span>Create Account</span>}
+          </button>
+        </form>
+
+        <div className="mt-6 pt-5 border-t border-[#f0f2f5] text-center space-y-2">
+          <p className="text-xs font-medium text-[#717682]">
+            Already have an account?{" "}
+            <button
+              onClick={() => setPage("login")}
+              className="font-extrabold text-[#111214] hover:underline cursor-pointer"
+            >
+              Sign In
+            </button>
+          </p>
+          <button
+            onClick={() => setPage("home")}
+            className="text-[11px] font-bold text-[#8c9099] hover:text-[#111214] transition cursor-pointer block mx-auto"
+          >
+            ← Continue as Guest
+          </button>
+        </div>
+      </BentoCard>
+    </div>
+  );
+}
+
+function ForgotPasswordPage({ setPage, onResetTokenReady }) {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [generatedToken, setGeneratedToken] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccessMsg("");
+    setGeneratedToken("");
+
+    if (!email.trim()) {
+      setError("Email address is required.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.post("/forgot-password/", { email: email.trim() });
+      setSuccessMsg(res.data.message || "Password reset token generated.");
+      if (res.data.reset_token) {
+        setGeneratedToken(res.data.reset_token);
+        if (onResetTokenReady) onResetTokenReady(res.data.reset_token);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to initiate password reset.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto py-8">
+      <BentoCard className="p-8">
+        <div className="text-center mb-6">
+          <div className="inline-flex mb-3">
+            <IconFluxLogo />
+          </div>
+          <h2 className="text-2xl font-black text-[#111214] tracking-tight">Forgot Password</h2>
+          <p className="text-xs font-medium text-[#717682] mt-1">
+            Enter your registered email to receive or generate a password reset token.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <ErrorMsg msg={error} />
+          <SuccessMsg msg={successMsg} />
+
+          {generatedToken && (
+            <div className="p-4 rounded-2xl bg-[#f7fde6] border border-[#dcf589] space-y-2.5">
+              <p className="text-xs font-extrabold text-[#2e5200]">Your Reset Verification Token:</p>
+              <div className="p-2.5 rounded-xl bg-white border border-[#e8eaee] font-mono text-xs text-[#16171a] break-all select-all">
+                {generatedToken}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPage("reset")}
+                className="w-full py-2.5 rounded-xl bg-[#16171a] text-white text-xs font-extrabold hover:bg-black transition cursor-pointer"
+              >
+                Proceed to Reset Password →
+              </button>
+            </div>
           )}
+
+          {!generatedToken && (
+            <>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                  Account Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. researcher@unbiasify.org"
+                  required
+                  autoFocus
+                  className="w-full rounded-2xl bg-[#f9fafb] border border-[#e8eaee] px-4 py-3 text-xs font-semibold text-[#111214] placeholder-[#8c9099] focus:outline-none focus:ring-2 focus:ring-[#d2f84b] focus:border-transparent transition"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                {loading ? <Spinner size="sm" /> : <span>Generate Reset Token</span>}
+              </button>
+            </>
+          )}
+        </form>
+
+        <div className="mt-6 pt-5 border-t border-[#f0f2f5] text-center space-y-2">
+          <p className="text-xs font-medium text-[#717682]">
+            Already have a reset token?{" "}
+            <button
+              onClick={() => setPage("reset")}
+              className="font-extrabold text-[#111214] hover:underline cursor-pointer"
+            >
+              Enter Token Here
+            </button>
+          </p>
+          <button
+            onClick={() => setPage("login")}
+            className="text-[11px] font-bold text-[#8c9099] hover:text-[#111214] transition cursor-pointer block mx-auto"
+          >
+            ← Back to Sign In
+          </button>
+        </div>
+      </BentoCard>
+    </div>
+  );
+}
+
+function ResetPasswordPage({ setPage, initialToken = "" }) {
+  const [token, setToken] = useState(initialToken);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (initialToken) setToken(initialToken);
+  }, [initialToken]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!token.trim()) {
+      setError("Reset token is required.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("New password must be at least 8 characters long.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post("/reset-password/", {
+        token: token.trim(),
+        new_password: newPassword.trim(),
+      });
+      setSuccess(true);
+    } catch (err) {
+      setError(err.response?.data?.error || "Invalid or expired token. Please generate a new one.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto py-8">
+      <BentoCard className="p-8">
+        <div className="text-center mb-6">
+          <div className="inline-flex mb-3">
+            <IconFluxLogo />
+          </div>
+          <h2 className="text-2xl font-black text-[#111214] tracking-tight">Set New Password</h2>
+          <p className="text-xs font-medium text-[#717682] mt-1">
+            Enter your verification token and your new password.
+          </p>
+        </div>
+
+        {success ? (
+          <div className="space-y-4 text-center">
+            <div className="p-4 rounded-2xl bg-[#f7fde6] border border-[#dcf589] text-xs font-bold text-[#2e5200]">
+              Password reset successful! You can now sign in with your new password.
+            </div>
+            <button
+              onClick={() => setPage("login")}
+              className="w-full py-3.5 rounded-2xl bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm cursor-pointer"
+            >
+              Sign In Now →
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <ErrorMsg msg={error} />
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                Reset Token
+              </label>
+              <input
+                type="text"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="Paste your reset token"
+                required
+                className="w-full rounded-2xl bg-[#f9fafb] border border-[#e8eaee] px-4 py-3 text-xs font-mono font-semibold text-[#111214] placeholder-[#8c9099] focus:outline-none focus:ring-2 focus:ring-[#d2f84b] focus:border-transparent transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                New Password (min 8 chars)
+              </label>
+              <PasswordInput
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                Confirm New Password
+              </label>
+              <PasswordInput
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat new password"
+                autoComplete="new-password"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              {loading ? <Spinner size="sm" /> : <span>Update Password</span>}
+            </button>
+          </form>
+        )}
+
+        <div className="mt-6 pt-5 border-t border-[#f0f2f5] text-center">
+          <button
+            onClick={() => setPage("login")}
+            className="text-[11px] font-bold text-[#8c9099] hover:text-[#111214] transition cursor-pointer"
+          >
+            ← Back to Sign In
+          </button>
         </div>
       </BentoCard>
     </div>
@@ -1242,9 +1927,10 @@ function AuthPage({ mode = "login" }) {
 
 // ─── MAIN APP FRAME (FLUX CANVAS & WORKING NOTIFICATIONS) ──────────────────────
 
-function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) {
+function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
   const [page, setPage] = useState("home");
   const [resultState, setResultState] = useState(null);
+  const [resetToken, setResetToken] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, title: "Heuristic Engine Active", desc: "5-axis linguistic bias patterns calibrated.", time: "Just now", read: false },
@@ -1252,7 +1938,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
     { id: 3, title: "Advisory Mode Ready", desc: "Evaluated against standard unbiased corpora.", time: "1h ago", read: true },
   ]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const navigate = useCallback((p) => {
     setPage(p);
@@ -1277,7 +1963,6 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
     <div className="min-h-screen bg-[#d7ebd0] p-2 sm:p-5 flex items-center justify-center font-sans antialiased text-[#111214]">
       {/* Outer Rounded Container matching the Flux Template */}
       <div className="w-full max-w-[1400px] bg-[#f4f5f7] rounded-[2.2rem] shadow-2xl border border-black/5 overflow-hidden flex flex-col md:flex-row min-h-[860px]">
-        
         {/* Left Dark Sidebar (#16171a) */}
         <aside className="w-full md:w-64 bg-[#16171a] p-6 flex flex-col justify-between shrink-0 text-white">
           <div>
@@ -1336,13 +2021,9 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
             {/* User Profile */}
             <div className="flex items-center gap-3">
               {user ? (
-                hasClerkKey ? (
-                  <UserButton afterSignOutUrl="/" />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold">
-                    {user.username?.[0]?.toUpperCase() || "U"}
-                  </div>
-                )
+                <div className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold">
+                  {user.username?.[0]?.toUpperCase() || "U"}
+                </div>
               ) : (
                 <div className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold">
                   G
@@ -1359,7 +2040,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
               </div>
             </div>
 
-            {/* Search Pill & Notification Bell */}
+            {/* Search Pill, Notification Bell, & Auth Actions */}
             <div className="flex items-center gap-3 relative">
               {user && (
                 <div className="hidden sm:flex items-center gap-2 bg-white rounded-full py-2 px-4 shadow-2xs border border-[#e8eaee] w-64">
@@ -1400,7 +2081,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
                     </div>
                     {unreadCount > 0 && (
                       <button
-                        onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
+                        onClick={() => setNotifications(notifications.map((n) => ({ ...n, read: true })))}
                         className="text-[10px] font-bold text-[#5f6672] hover:text-[#111214] cursor-pointer"
                       >
                         Mark all read
@@ -1426,7 +2107,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
                             <span className="text-[10px] text-[#8c9099] mt-1 block">{n.time}</span>
                           </div>
                           <button
-                            onClick={() => setNotifications(notifications.filter(x => x.id !== n.id))}
+                            onClick={() => setNotifications(notifications.filter((x) => x.id !== n.id))}
                             className="text-[#8c9099] hover:text-rose-500 text-xs p-1 cursor-pointer"
                             title="Dismiss"
                           >
@@ -1439,13 +2120,27 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
                 </div>
               )}
 
-              {!user && (
+              {user ? (
+                <button
+                  onClick={onLogout}
+                  className="px-4 py-2 rounded-full text-xs font-bold text-[#5f6672] hover:text-rose-600 bg-white border border-[#e8eaee] hover:border-rose-200 hover:bg-rose-50/50 transition cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              ) : (
                 <div className="flex items-center gap-2">
-                  <SignInButton mode="modal">
-                    <button className="px-4 py-2 rounded-full text-xs font-bold text-[#16171a] bg-white border border-[#e8eaee] hover:bg-black/5 transition cursor-pointer">
-                      Sign In
-                    </button>
-                  </SignInButton>
+                  <button
+                    onClick={() => navigate("login")}
+                    className="px-4 py-2 rounded-full text-xs font-bold text-[#16171a] bg-white border border-[#e8eaee] hover:bg-black/5 transition cursor-pointer"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => navigate("register")}
+                    className="px-4 py-2 rounded-full text-xs font-bold text-[#16171a] bg-[#d2f84b] hover:bg-[#c4ec39] transition cursor-pointer"
+                  >
+                    Register
+                  </button>
                 </div>
               )}
             </div>
@@ -1477,13 +2172,26 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
                 user={user}
                 onProfileUpdate={onProfileUpdate}
                 onLogout={onLogout}
+                setPage={navigate}
               />
             )}
             {page === "login" && (
-              <AuthPage mode="login" />
+              <LoginPage setPage={navigate} onLogin={onLogin} />
             )}
             {page === "register" && (
-              <AuthPage mode="register" />
+              <RegisterPage setPage={navigate} onLogin={onLogin} />
+            )}
+            {page === "forgot" && (
+              <ForgotPasswordPage
+                setPage={navigate}
+                onResetTokenReady={(tok) => setResetToken(tok)}
+              />
+            )}
+            {page === "reset" && (
+              <ResetPasswordPage
+                setPage={navigate}
+                initialToken={resetToken}
+              />
             )}
           </div>
         </main>
@@ -1492,69 +2200,15 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
   );
 }
 
-// ─── AUTH WRAPPERS ────────────────────────────────────────────────────────────
+// ─── ROOT APP COMPONENT ──────────────────────────────────────────────────
 
-function ClerkAppWrapper() {
-  const { user: clerkUser, isLoaded } = useUser();
-  const { getToken } = useAuth();
-  const [customUsername, setCustomUsername] = useState(() => localStorage.getItem("custom_username") || "");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.__clerk_getToken = getToken;
-    }
-  }, [getToken]);
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-[#d7ebd0] flex flex-col items-center justify-center gap-3">
-        <Spinner size="lg" />
-        <span className="text-xs font-bold text-[#16171a]">Starting Unbiasify Flux…</span>
-      </div>
-    );
-  }
-
-  const handleProfileUpdate = async (u) => {
-    if (u.username) {
-      setCustomUsername(u.username);
-      localStorage.setItem("custom_username", u.username);
-      if (clerkUser) {
-        try {
-          await clerkUser.update({ firstName: u.username });
-        } catch { /* silent */ }
-      }
-    }
-  };
-
-  const user = clerkUser
-    ? {
-        username: customUsername || clerkUser.firstName || clerkUser.username || clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] || "User",
-        email: clerkUser.primaryEmailAddress?.emailAddress || "",
-      }
-    : null;
-
-  return (
-    <AppScaffold
-      user={user}
-      onLogout={() => {}}
-      onLogin={() => {}}
-      onProfileUpdate={handleProfileUpdate}
-      hasClerkKey={true}
-    />
-  );
-}
-
-function LocalAppWrapper() {
+export default function App() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("access");
-    const guestUser = localStorage.getItem("guest_username");
     if (!token) {
-      if (guestUser) {
-        setUser({ username: guestUser, email: "guest@unbiasify.local" });
-      }
       setChecking(false);
       return;
     }
@@ -1565,6 +2219,7 @@ function LocalAppWrapper() {
       } catch {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
+        setUser(null);
       } finally {
         setChecking(false);
       }
@@ -1573,8 +2228,7 @@ function LocalAppWrapper() {
 
   const handleProfileUpdate = (u) => {
     if (u.username) {
-      localStorage.setItem("guest_username", u.username);
-      setUser(prev => ({ ...(prev || { email: "guest@unbiasify.local" }), username: u.username }));
+      setUser((prev) => (prev ? { ...prev, username: u.username } : null));
     }
   };
 
@@ -1582,6 +2236,10 @@ function LocalAppWrapper() {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
     setUser(null);
+  };
+
+  const handleLogin = (u) => {
+    setUser(u);
   };
 
   if (checking) {
@@ -1597,14 +2255,8 @@ function LocalAppWrapper() {
     <AppScaffold
       user={user}
       onLogout={handleLogout}
-      onLogin={(u) => setUser(u)}
+      onLogin={handleLogin}
       onProfileUpdate={handleProfileUpdate}
-      hasClerkKey={false}
     />
   );
-}
-
-export default function App() {
-  const hasClerkKey = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-  return hasClerkKey ? <ClerkAppWrapper /> : <LocalAppWrapper />;
 }
