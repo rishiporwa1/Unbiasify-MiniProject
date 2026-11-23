@@ -1244,19 +1244,24 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
             </nav>
           </div>
 
-          {/* Bottom Engine Card */}
+          {/* Bottom Feature Card */}
           <div className="mt-8 rounded-3xl bg-[#d2f84b] p-5 text-[#16171a] shadow-sm flex flex-col justify-between">
             <div>
-              <p className="font-black text-sm tracking-tight mb-1">Perspective Engine</p>
-              <p className="text-[11px] font-semibold text-[#16171a]/80 leading-snug">
-                Supabase PostgreSQL + Django heuristic bias detection.
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="font-black text-sm tracking-tight">Objective Writing</p>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#16171a] text-white">
+                  Live
+                </span>
+              </div>
+              <p className="text-[11px] font-semibold text-[#16171a]/85 leading-snug">
+                Detect loaded framing, covert stereotypes, and tone slant before you publish.
               </p>
             </div>
             <button
               onClick={() => navigate("home")}
-              className="mt-4 w-full py-2.5 rounded-xl bg-[#16171a] text-white text-xs font-extrabold hover:bg-black transition cursor-pointer"
+              className="mt-4 w-full py-2.5 rounded-xl bg-[#16171a] text-white text-xs font-extrabold hover:bg-black transition shadow-sm cursor-pointer"
             >
-              Analyze Text
+              Start New Review
             </button>
           </div>
         </aside>
