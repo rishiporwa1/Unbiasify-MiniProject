@@ -270,20 +270,38 @@ function SuccessMsg({ msg }) {
 function Toggle({ value, onChange, label }) {
   return (
     <button
-      onClick={() => onChange(!value)}
-      className="flex items-center gap-2 cursor-pointer"
       type="button"
+      role="switch"
+      aria-checked={Boolean(value)}
+      onClick={(e) => {
+        e.preventDefault();
+        onChange(!value);
+      }}
+      className="inline-flex items-center gap-2 cursor-pointer select-none group"
     >
-      <div className={cn(
-        "w-9 h-5 rounded-full relative transition-colors duration-200",
-        value ? "bg-[#16171a]" : "bg-[#e2e4e8]"
-      )}>
-        <div className={cn(
-          "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200",
-          value ? "left-4.5" : "left-0.5"
-        )} />
+      <div
+        className={cn(
+          "w-9 h-5 rounded-full relative transition-colors duration-200 ease-in-out p-0.5 flex items-center",
+          value ? "bg-[#16171a]" : "bg-[#d1d5db]"
+        )}
+      >
+        <div
+          className={cn(
+            "w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ease-in-out",
+            value ? "translate-x-4" : "translate-x-0"
+          )}
+        />
       </div>
-      {label && <span className="text-xs font-bold text-[#5f6672]">{label}</span>}
+      {label && (
+        <span
+          className={cn(
+            "text-xs font-bold transition-colors select-none",
+            value ? "text-[#111214]" : "text-[#8c9099]"
+          )}
+        >
+          {label}
+        </span>
+      )}
     </button>
   );
 }
