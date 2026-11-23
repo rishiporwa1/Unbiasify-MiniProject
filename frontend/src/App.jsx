@@ -435,14 +435,14 @@ function AnalyzePage({ user, setPage, setResultState }) {
         </div>
       </BentoCard>
 
-      {/* Modern Bento Feature Grid (High Contrast & Visual Metrics) */}
+      {/* Modern Bento Feature Grid (Standard Project Color Code) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: 4-Axis Bias Matrix */}
         <BentoCard className="p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b] shadow-xs" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b]" />
                 <h3 className="font-extrabold text-sm text-[#111214]">4-Axis Bias Matrix</h3>
               </div>
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#f4f5f7] text-[#5f6672]">
@@ -451,26 +451,26 @@ function AnalyzePage({ user, setPage, setResultState }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-2xl bg-[#f0effe] border border-[#d3ceff]/60 flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#4b3fbd]">Emotive</span>
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Emotive</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">Loaded Language</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Charged adjectives & sensationalism</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#eff6ff] border border-[#bfdbfe]/60 flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#1d4ed8]">Sweeping</span>
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Sweeping</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">Generalization</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Claims without factual attribution</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#f7fde6] border border-[#dcf589] flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#365314]">Demographic</span>
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Demographic</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">Stereotyping</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Attributing roles to social groups</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#fefce8] border border-[#fef08a] flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#854d0e]">Selective</span>
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Selective</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">One-Sided</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Omitting counter-arguments</p>
               </div>
@@ -483,7 +483,7 @@ function AnalyzePage({ user, setPage, setResultState }) {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#b6b0fc] shadow-xs" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#b6b0fc]" />
                 <h3 className="font-extrabold text-sm text-[#111214]">Tone & Readability</h3>
               </div>
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#f4f5f7] text-[#5f6672]">
@@ -498,11 +498,13 @@ function AnalyzePage({ user, setPage, setResultState }) {
                   <span>Sentiment Polarity</span>
                   <span className="text-[#8c9099] font-mono">−1.0 → +1.0</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-gradient-to-r from-rose-400 via-amber-300 to-[#d2f84b] rounded-full" />
+                <div className="h-2 w-full rounded-full bg-[#e8eaee] overflow-hidden">
+                  <div className="h-full bg-[#d2f84b] rounded-full w-2/3" />
+                </div>
                 <div className="flex justify-between text-[9px] font-bold text-[#8c9099] mt-1">
-                  <span>Critical</span>
-                  <span>Neutral</span>
-                  <span>Favorable</span>
+                  <span>Critical (−1.0)</span>
+                  <span>Neutral (0.0)</span>
+                  <span>Favorable (+1.0)</span>
                 </div>
               </div>
 
@@ -525,42 +527,40 @@ function AnalyzePage({ user, setPage, setResultState }) {
           </div>
         </BentoCard>
 
-        {/* Card 3: Dark Mode Accent — Privacy & Explainable AI */}
-        <div className="p-6 rounded-3xl bg-[#16171a] text-white flex flex-col justify-between shadow-xl relative overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-[#d2f84b]/10 blur-2xl pointer-events-none" />
-
+        {/* Card 3: Advisory Engine (Standard White BentoCard) */}
+        <BentoCard className="p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b]" />
-                <h3 className="font-extrabold text-sm text-white">Advisory Engine</h3>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#16171a]" />
+                <h3 className="font-extrabold text-sm text-[#111214]">Advisory Engine</h3>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-[#d2f84b]">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#f4f5f7] text-[#5f6672]">
                 Privacy First
               </span>
             </div>
 
-            <p className="text-xs text-white/70 leading-relaxed font-medium mb-4">
+            <p className="text-xs text-[#5f6672] leading-relaxed font-medium mb-4">
               Scans sentences against weighted heuristic attribution patterns. Never issues legal verdicts — surfaces evidence for human context.
             </p>
 
             <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/5 border border-white/10">
-                <span className="text-[#d2f84b] font-black text-sm">✓</span>
-                <span className="font-bold text-white/90">Character-level span citations</span>
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
+                <span className="w-4 h-4 rounded-full bg-[#d2f84b] text-[#16171a] flex items-center justify-center text-[10px] font-black">✓</span>
+                <span className="font-bold text-[#111214]">Character-level span citations</span>
               </div>
-              <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/5 border border-white/10">
-                <span className="text-[#d2f84b] font-black text-sm">🔒</span>
-                <span className="font-bold text-white/90">Ephemeral in-memory processing option</span>
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
+                <span className="w-4 h-4 rounded-full bg-[#16171a] text-white flex items-center justify-center text-[10px] font-black">🔒</span>
+                <span className="font-bold text-[#111214]">Ephemeral in-memory processing option</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-bold text-white/60">
+          <div className="mt-4 pt-3 border-t border-[#f0f2f5] flex items-center justify-between text-[11px] font-bold text-[#8c9099]">
             <span>Deterministic Scoring</span>
-            <span className="text-[#d2f84b] font-mono">100% Private</span>
+            <span className="text-[#16171a] font-mono font-bold">100% Private</span>
           </div>
-        </div>
+        </BentoCard>
       </div>
     </div>
   );
