@@ -1203,6 +1203,20 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Are you sure you want to permanently delete your Unbiasify account? This will erase all your profile data and saved bias analyses from the database.")) {
+      return;
+    }
+    try {
+      await api.post("/delete-account/", { confirm: true });
+      onNotify?.("Account Deleted", "Your account and data have been removed permanently.");
+      onLogout();
+      setPage("home");
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to delete account.");
+    }
+  };
+
   const displayName = profile?.username || (isGuest ? "Guest User" : user?.username || "User");
 
   return (
@@ -1430,8 +1444,16 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
               </button>
             </BentoCard>
           ) : (
-            <div className="pt-4 flex justify-end">
+            <div className="pt-4 flex items-center justify-between">
               <button
+                type="button"
+                onClick={handleDeleteAccount}
+                className="px-4 py-2 rounded-full text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+              >
+                Delete Account
+              </button>
+              <button
+                type="button"
                 onClick={onLogout}
                 className="px-5 py-2.5 rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold transition cursor-pointer"
               >
@@ -1492,7 +1514,32 @@ function LoginPage({ setPage, onLogin, onNotify }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <ErrorMsg msg={error} />
+          {error && (
+            <div className="px-4 py-3 rounded-2xl bg-[#fff1f2] border border-[#fecdd3] text-[#be123c] text-xs font-semibold space-y-2">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+              {error.toLowerCase().includes("already registered") && (
+                <div className="flex items-center gap-3 pt-1 text-[11px] font-bold text-[#111214] border-t border-[#fecdd3]/60">
+                  <button
+                    type="button"
+                    onClick={() => setPage("login")}
+                    className="underline hover:text-black cursor-pointer"
+                  >
+                    Sign In with this email →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage("forgot")}
+                    className="text-[#5f6672] hover:text-[#111214] cursor-pointer"
+                  >
+                    Reset Password
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
@@ -1620,7 +1667,32 @@ function RegisterPage({ setPage, onLogin, onNotify }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <ErrorMsg msg={error} />
+          {error && (
+            <div className="px-4 py-3 rounded-2xl bg-[#fff1f2] border border-[#fecdd3] text-[#be123c] text-xs font-semibold space-y-2">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+              {error.toLowerCase().includes("already registered") && (
+                <div className="flex items-center gap-3 pt-1 text-[11px] font-bold text-[#111214] border-t border-[#fecdd3]/60">
+                  <button
+                    type="button"
+                    onClick={() => setPage("login")}
+                    className="underline hover:text-black cursor-pointer"
+                  >
+                    Sign In with this email →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage("forgot")}
+                    className="text-[#5f6672] hover:text-[#111214] cursor-pointer"
+                  >
+                    Reset Password
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
@@ -1757,7 +1829,32 @@ function ForgotPasswordPage({ setPage, onResetTokenReady, onNotify }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <ErrorMsg msg={error} />
+          {error && (
+            <div className="px-4 py-3 rounded-2xl bg-[#fff1f2] border border-[#fecdd3] text-[#be123c] text-xs font-semibold space-y-2">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+              {error.toLowerCase().includes("already registered") && (
+                <div className="flex items-center gap-3 pt-1 text-[11px] font-bold text-[#111214] border-t border-[#fecdd3]/60">
+                  <button
+                    type="button"
+                    onClick={() => setPage("login")}
+                    className="underline hover:text-black cursor-pointer"
+                  >
+                    Sign In with this email →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage("forgot")}
+                    className="text-[#5f6672] hover:text-[#111214] cursor-pointer"
+                  >
+                    Reset Password
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <SuccessMsg msg={successMsg} />
 
           {generatedToken && (

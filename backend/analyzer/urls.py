@@ -12,6 +12,7 @@ urlpatterns = [
     path('reset-password/', views.reset_password),
     path('change-password/', views.change_password),
     path('delete-account/', views.delete_account),
+    path('clerk-webhook/', views.clerk_webhook),
     # New endpoints
     path('feedback/', views.analyze_feedback),
     path('history/<int:pk>/delete/', views.delete_analysis),

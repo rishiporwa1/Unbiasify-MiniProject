@@ -31,11 +31,29 @@ def register(request):
     if not username or not password or not email:
         return Response({'error': 'All fields are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Check for existing email first
+    existing_by_email = User.objects.filter(email__iexact=email).first()
+    if existing_by_email:
+        # Auto-claim/adopt if the user was created via Clerk (user_*) or has no native password
+        is_orphaned_clerk = existing_by_email.username.startswith('user_') or not existing_by_email.has_usable_password()
+        if is_orphaned_clerk:
+            if User.objects.filter(username=username).exclude(id=existing_by_email.id).exists():
+                return Response({'error': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
+            existing_by_email.username = username
+            existing_by_email.set_password(password)
+            existing_by_email.save()
+            refresh = RefreshToken.for_user(existing_by_email)
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'username': existing_by_email.username,
+                'email': existing_by_email.email,
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({'error': 'Email already registered. Please sign in or reset your password.'}, status=status.HTTP_400_BAD_REQUEST)
+
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if User.objects.filter(email=email).exists():
-        return Response({'error': 'Email already registered.'}, status=status.HTTP_400_BAD_REQUEST)
 
     user = User.objects.create_user(username=username, password=password, email=email)
     refresh = RefreshToken.for_user(user)
@@ -208,16 +226,84 @@ def edit_profile(request):
 # DELETE ACCOUNT
 # ---------------------------------------------------------------------------
 
-@api_view(['POST'])
+@api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_account(request):
     password = request.data.get('password', '').strip()
-    if not password:
-        return Response({'error': 'Password is required.'}, status=status.HTTP_400_BAD_REQUEST)
-    if not request.user.check_password(password):
-        return Response({'error': 'Incorrect password.'}, status=status.HTTP_400_BAD_REQUEST)
+    confirm = request.data.get('confirm', False)
+
+    if request.user.has_usable_password() and password:
+        if not request.user.check_password(password):
+            return Response({'error': 'Incorrect password.'}, status=status.HTTP_400_BAD_REQUEST)
+    elif request.user.has_usable_password() and not confirm:
+        return Response({'error': 'Password or confirmation is required to delete account.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_email = request.user.email or request.user.username
     request.user.delete()
-    return Response({'message': 'Account deleted successfully.'})
+    return Response({'message': f'Account {user_email} deleted successfully.'})
+
+
+# ---------------------------------------------------------------------------
+# CLERK WEBHOOK (SYNC DELETIONS & UPDATES AUTOMATICALLY)
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def clerk_webhook(request):
+    """
+    Receives events from Clerk (e.g. user.deleted, user.created, user.updated).
+    Automatically deletes or synchronizes the user in the Django/Supabase database.
+    """
+    payload = request.data
+    event_type = payload.get('type')
+    data = payload.get('data', {})
+
+    logger.info(f"Received Clerk webhook: {event_type}")
+
+    if event_type == 'user.deleted':
+        clerk_id = data.get('id')
+        deleted_count = 0
+        if clerk_id:
+            count, _ = User.objects.filter(username=clerk_id).delete()
+            deleted_count += count
+
+        email_addresses = data.get('email_addresses', [])
+        for em in email_addresses:
+            addr = em.get('email_address') if isinstance(em, dict) else em
+            if addr:
+                count, _ = User.objects.filter(email__iexact=addr).delete()
+                deleted_count += count
+
+        return Response({'status': 'success', 'event': event_type, 'deleted': deleted_count})
+
+    elif event_type in ('user.created', 'user.updated'):
+        clerk_id = data.get('id')
+        if not clerk_id:
+            return Response({'error': 'Missing user id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        email_objs = data.get('email_addresses', [])
+        primary_id = data.get('primary_email_address_id')
+        email = ''
+        for em in email_objs:
+            if em.get('id') == primary_id:
+                email = em.get('email_address', '')
+                break
+        if not email and email_objs:
+            email = email_objs[0].get('email_address', '')
+
+        user, _ = User.objects.get_or_create(username=clerk_id)
+        if email:
+            user.email = email
+        first_name = data.get('first_name', '')
+        last_name = data.get('last_name', '')
+        if first_name:
+            user.first_name = first_name
+        if last_name:
+            user.last_name = last_name
+        user.save()
+        return Response({'status': 'success', 'event': event_type, 'username': user.username})
+
+    return Response({'status': 'ignored', 'event': event_type})
 
 
 # ---------------------------------------------------------------------------
