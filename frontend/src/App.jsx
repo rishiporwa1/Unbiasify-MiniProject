@@ -495,7 +495,6 @@ function AnalyzePage({ user, setPage, setResultState }) {
 
 function ResultsPage({ resultState, setPage }) {
   const { result, originalText } = resultState;
-  const [activeTab, setActiveTab] = useState("evidence");
   const [activeDrawerIdx, setActiveDrawerIdx] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -506,7 +505,6 @@ function ResultsPage({ resultState, setPage }) {
 
   const handleFindingClick = (idx) => {
     setActiveDrawerIdx(activeDrawerIdx === idx ? null : idx);
-    setActiveTab("evidence");
   };
 
   const copyRewrite = () => {
@@ -577,99 +575,100 @@ function ResultsPage({ resultState, setPage }) {
           )}
         </BentoCard>
 
-        {/* Right Column: Evidence & Metrics Bento */}
+        {/* Right Column: All Metrics & Evidence (Unified View) */}
         <div className="lg:col-span-6 space-y-6">
-          <BentoCard className="p-5">
-            <div className="flex border-b border-[#f0f2f5] mb-4 gap-2">
-              {["evidence", "sentiment", "tone", "readability"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={cn(
-                    "pb-2 px-3 text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer",
-                    activeTab === tab
-                      ? "text-[#16171a] border-b-2 border-[#16171a]"
-                      : "text-[#8c9099] hover:text-[#111214]"
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
+          {/* 1. Evidence / Findings */}
+          <BentoCard className="p-5 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#f0f2f5]">
+              <span className="text-xs font-black uppercase tracking-wider text-[#16171a]">Bias Evidence</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#f4f5f7] text-[#5f6672]">
+                {findings.length} Flagged
+              </span>
             </div>
 
-            {activeTab === "evidence" && (
-              <div className="space-y-3">
-                {findings.length === 0 ? (
-                  <p className="text-xs text-[#8c9099] py-8 text-center font-bold">No bias tokens flagged — objective phrasing.</p>
-                ) : (
-                  findings.map((f, i) => (
-                    <div key={i} className="p-3.5 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white border border-[#e2e4e8]">
-                          {CATEGORY_CONFIG[f.category]?.label || f.category}
-                        </span>
-                        <span className="text-xs font-mono font-bold text-[#16171a]">{f.weight || 5.0} / 10 weight</span>
-                      </div>
-                      <p className="text-xs text-[#111214] font-medium">"{f.surrounding_sentence || f.span}"</p>
-                      <p className="text-[11px] text-[#5f6672]">{f.explanation}</p>
+            <div className="space-y-3 pt-1">
+              {findings.length === 0 ? (
+                <p className="text-xs text-[#8c9099] py-4 text-center font-bold">No bias tokens flagged — objective phrasing.</p>
+              ) : (
+                findings.map((f, i) => (
+                  <div key={i} className="p-3.5 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white border border-[#e2e4e8]">
+                        {CATEGORY_CONFIG[f.category]?.label || f.category}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-[#16171a]">{f.weight || 5.0} / 10 weight</span>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {activeTab === "sentiment" && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
-                  <div className="flex justify-between items-baseline mb-2">
-                    <span className="text-xs font-black uppercase text-[#8c9099]">Sentiment</span>
-                    <span className="text-lg font-black text-[#111214]">{result.sentiment}</span>
+                    <p className="text-xs text-[#111214] font-medium">"{f.surrounding_sentence || f.span}"</p>
+                    <p className="text-[11px] text-[#5f6672]">{f.explanation}</p>
                   </div>
-                  <div className="flex justify-between text-xs font-bold text-[#8c9099] mb-1">
-                    <span>Polarity Score</span>
-                    <span className="font-mono text-[#111214]">{result.polarity?.toFixed(3)}</span>
-                  </div>
-                  <div className="h-2.5 w-full rounded-full bg-[#e2e4e8] overflow-hidden">
-                    <div
-                      className="h-full bg-[#d2f84b] rounded-full"
-                      style={{ width: `${Math.max(0, Math.min(100, ((result.polarity + 1) / 2) * 100))}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "tone" && (
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs font-bold">
-                  <span>Formality</span>
-                  <span>{((tone.formality || 0) * 100).toFixed(0)}%</span>
-                </div>
-                <div className="flex justify-between text-xs font-bold">
-                  <span>Warmth</span>
-                  <span>{((tone.warmth || 0) * 100).toFixed(0)}%</span>
-                </div>
-                <div className="flex justify-between text-xs font-bold">
-                  <span>Urgency</span>
-                  <span>{((tone.urgency || 0) * 100).toFixed(0)}%</span>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "readability" && (
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
-                  <span className="text-2xl font-black text-[#111214]">{readability.word_count || 0}</span>
-                  <p className="text-[11px] font-bold text-[#8c9099]">Word Count</p>
-                </div>
-                <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
-                  <span className="text-2xl font-black text-[#111214]">{readability.flesch_score?.toFixed(1) || "—"}</span>
-                  <p className="text-[11px] font-bold text-[#8c9099]">Flesch Score</p>
-                </div>
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </BentoCard>
 
+          {/* 2. Sentiment & Polarity */}
+          <BentoCard className="p-5 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#f0f2f5]">
+              <span className="text-xs font-black uppercase tracking-wider text-[#16171a]">Sentiment & Polarity</span>
+              <span className={cn(
+                "text-xs font-black uppercase px-2.5 py-0.5 rounded-full",
+                result.sentiment === "Positive" ? "bg-[#d2f84b]/30 text-[#2e5200]" :
+                result.sentiment === "Negative" ? "bg-red-100 text-red-700" :
+                "bg-gray-100 text-gray-700"
+              )}>
+                {result.sentiment}
+              </span>
+            </div>
+            <div className="space-y-2 pt-1">
+              <div className="flex justify-between text-xs font-bold text-[#8c9099]">
+                <span>Polarity Spectrum</span>
+                <span className="font-mono text-[#111214]">{result.polarity?.toFixed(3)}</span>
+              </div>
+              <div className="h-2.5 w-full rounded-full bg-[#e2e4e8] overflow-hidden">
+                <div
+                  className="h-full bg-[#d2f84b] rounded-full transition-all"
+                  style={{ width: `${Math.max(0, Math.min(100, ((result.polarity + 1) / 2) * 100))}%` }}
+                />
+              </div>
+            </div>
+          </BentoCard>
+
+          {/* 3. Tone & Readability Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <BentoCard className="p-4 space-y-3">
+              <span className="text-xs font-black uppercase tracking-wider text-[#16171a]">Tone Analysis</span>
+              <div className="space-y-2 text-xs font-bold pt-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#5f6672]">Formality</span>
+                  <span className="font-mono text-[#111214]">{((tone.formality || 0) * 100).toFixed(0)}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#5f6672]">Warmth</span>
+                  <span className="font-mono text-[#111214]">{((tone.warmth || 0) * 100).toFixed(0)}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#5f6672]">Urgency</span>
+                  <span className="font-mono text-[#111214]">{((tone.urgency || 0) * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            </BentoCard>
+
+            <BentoCard className="p-4 space-y-3">
+              <span className="text-xs font-black uppercase tracking-wider text-[#16171a]">Readability</span>
+              <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                <div className="p-2.5 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
+                  <span className="text-xl font-black text-[#111214]">{readability.word_count || 0}</span>
+                  <p className="text-[10px] font-bold text-[#8c9099]">Words</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
+                  <span className="text-xl font-black text-[#111214]">{readability.flesch_score?.toFixed(1) || "—"}</span>
+                  <p className="text-[10px] font-bold text-[#8c9099]">Flesch</p>
+                </div>
+              </div>
+            </BentoCard>
+          </div>
+
+          {/* 4. Suggested Rewrite */}
           {result.rewrite && (
             <BentoCard className="p-5 bg-[#f0effe] border border-[#d3ceff]">
               <div className="flex items-center justify-between mb-2">
