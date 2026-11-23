@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { useUser, useAuth, SignIn, SignUp, UserButton, SignInButton, SignUpButton } from "@clerk/react";
 
-const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const rawApi = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api").trim().replace(/\/+$/, "");
+const API = rawApi.endsWith("/api") ? rawApi : `${rawApi}/api`;
 
 const api = axios.create({ baseURL: API });
 api.interceptors.request.use(async (config) => {
