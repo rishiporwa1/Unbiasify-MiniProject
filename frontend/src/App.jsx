@@ -115,6 +115,14 @@ function IconTrash() {
   );
 }
 
+function IconEdit() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    </svg>
+  );
+}
+
 // ─── CONFIGURATION CONSTANTS ─────────────────────────────────────────────────
 
 const CATEGORY_CONFIG = {
@@ -925,13 +933,28 @@ function HistoryPage({ setPage, setResultState }) {
 
 function ProfilePage({ user, onProfileUpdate, onLogout }) {
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(user));
+  const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
 
+  const isGuest = !user;
+
   useEffect(() => {
+    if (isGuest) {
+      const guestName = localStorage.getItem("guest_username") || "Guest User";
+      setProfile({
+        username: guestName,
+        email: "guest@unbiasify.local",
+        total_analyses: 0,
+      });
+      setEditUsername(guestName);
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
         const res = await api.get("/profile/");
@@ -939,16 +962,16 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
         setEditUsername(res.data.username || user?.username || "");
       } catch {
         setProfile({
-          username: user?.username || "Guest Researcher",
+          username: user?.username || "Guest User",
           email: user?.email || "guest@unbiasify.local",
           total_analyses: 0,
         });
-        setEditUsername(user?.username || "Guest Researcher");
+        setEditUsername(user?.username || "Guest User");
       } finally {
         setLoading(false);
       }
     })();
-  }, [user]);
+  }, [user, isGuest]);
 
   const handleSaveUsername = async (e) => {
     e.preventDefault();
@@ -962,11 +985,18 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
 
     setSaving(true);
     try {
-      const res = await api.patch("/profile/edit/", { username: trimmed });
-      const updatedName = res.data.username || trimmed;
-      setProfile(prev => ({ ...prev, username: updatedName }));
-      onProfileUpdate({ username: updatedName });
+      if (!isGuest) {
+        const res = await api.patch("/profile/edit/", { username: trimmed });
+        const updatedName = res.data.username || trimmed;
+        setProfile((prev) => ({ ...prev, username: updatedName }));
+        onProfileUpdate({ username: updatedName });
+      } else {
+        localStorage.setItem("guest_username", trimmed);
+        setProfile((prev) => ({ ...prev, username: trimmed }));
+        onProfileUpdate({ username: trimmed });
+      }
       setMsg("Username updated successfully!");
+      setIsEditing(false);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to update username.");
     } finally {
@@ -974,63 +1004,144 @@ function ProfilePage({ user, onProfileUpdate, onLogout }) {
     }
   };
 
+  const displayName = profile?.username || (isGuest ? "Guest User" : user?.username || "User");
+
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-3xl font-extrabold text-[#111214]">Account Settings</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold text-[#111214]">
+            {isGuest ? "Guest Profile" : "Account Settings"}
+          </h1>
+          <p className="text-xs font-medium text-[#717682] mt-1">
+            {isGuest
+              ? "You are currently running in guest mode. Analyses are stored in this browser session only."
+              : "Manage your Unbiasify identity and profile details."}
+          </p>
+        </div>
+        {isGuest && (
+          <SignInButton mode="modal">
+            <button className="px-5 py-2 rounded-full bg-[#16171a] text-white text-xs font-bold hover:bg-black transition cursor-pointer">
+              Sign In to Sync
+            </button>
+          </SignInButton>
+        )}
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-20"><Spinner /></div>
       ) : (
         <div className="space-y-6">
           {/* User Overview Card */}
           <BentoCard className="p-6 space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#16171a] text-white flex items-center justify-center font-black text-2xl">
-                {profile?.username?.[0]?.toUpperCase() || "U"}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-[#16171a] text-white flex items-center justify-center font-black text-2xl">
+                  {isGuest ? "G" : displayName[0]?.toUpperCase() || "U"}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <p className="text-xl font-black text-[#111214]">{displayName}</p>
+                    <button
+                      onClick={() => { setIsEditing(!isEditing); setError(""); setMsg(""); }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#5f6672] hover:text-[#111214] bg-[#f4f5f7] hover:bg-[#e8eaee] transition flex items-center gap-1 cursor-pointer border border-[#e8eaee]"
+                      title="Edit username"
+                    >
+                      <IconEdit />
+                      <span>{isEditing ? "Close" : "Edit"}</span>
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-[#8c9099] mt-0.5">
+                    {isGuest ? "Guest Session Active" : (profile?.email || user?.email || "No email")}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xl font-black text-[#111214]">{profile?.username || user?.username}</p>
-                <p className="text-xs font-bold text-[#8c9099]">{profile?.email || user?.email || "No email"}</p>
-              </div>
+
+              {isGuest && (
+                <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#d2f84b]/30 text-[#2e5200]">
+                  Guest User
+                </span>
+              )}
             </div>
-            <div className="pt-4 border-t border-[#f0f2f5] flex justify-between items-center">
-              <span className="text-xs font-bold text-[#8c9099]">Total analyses logged:</span>
-              <span className="text-xs font-black text-[#111214]">{profile?.total_analyses || 0}</span>
+
+            <div className="pt-4 border-t border-[#f0f2f5] flex justify-between items-center text-xs">
+              <span className="font-bold text-[#8c9099]">Total analyses logged:</span>
+              <span className="font-black text-[#111214]">
+                {isGuest ? "Session only (Sign in to save)" : (profile?.total_analyses || 0)}
+              </span>
             </div>
           </BentoCard>
 
-          {/* Edit Username Form Card */}
-          <BentoCard className="p-6 space-y-4">
-            <h3 className="text-base font-extrabold text-[#111214]">Change Username</h3>
-            <p className="text-xs text-[#5f6672] font-medium">
-              Update how your name appears across Unbiasify workspace and analyses.
-            </p>
-
-            <form onSubmit={handleSaveUsername} className="space-y-3 pt-2">
-              <ErrorMsg msg={error} />
-              <SuccessMsg msg={msg} />
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                  New Username
-                </label>
-                <input
-                  type="text"
-                  value={editUsername}
-                  onChange={(e) => setEditUsername(e.target.value)}
-                  placeholder="Enter username"
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-sm font-bold text-[#111214] focus:outline-none focus:border-[#16171a]"
-                />
+          {/* Edit Username Card — ONLY DISPLAYED WHEN 'isEditing' IS TRUE */}
+          {isEditing && (
+            <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-extrabold text-[#111214]">Change Username</h3>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="text-xs font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
+              <p className="text-xs text-[#5f6672] font-medium">
+                Update how your name appears across Unbiasify workspace and analyses.
+              </p>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 cursor-pointer"
-              >
-                {saving ? "Saving…" : "Save Username"}
-              </button>
-            </form>
-          </BentoCard>
+              <form onSubmit={handleSaveUsername} className="space-y-3 pt-2">
+                <ErrorMsg msg={error} />
+                <SuccessMsg msg={msg} />
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                    New Username
+                  </label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    placeholder="Enter username"
+                    autoFocus
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-sm font-bold text-[#111214] focus:outline-none focus:border-[#16171a]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 cursor-pointer"
+                  >
+                    {saving ? "Saving…" : "Save Username"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="px-4 py-2.5 rounded-full text-xs font-bold text-[#5f6672] hover:bg-[#f4f5f7] transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </BentoCard>
+          )}
+
+          {/* Guest Sign-In Callout */}
+          {isGuest && (
+            <BentoCard className="p-6 bg-[#f7fde6] border border-[#dcf589] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-extrabold text-sm text-[#111214]">Create an Account or Sign In</h4>
+                <p className="text-xs text-[#5f6672] mt-0.5 font-medium">
+                  Signed-in users get persistent bias history, aggregate analytics dashboards, and cloud sync.
+                </p>
+              </div>
+              <SignInButton mode="modal">
+                <button className="px-5 py-2.5 rounded-full bg-[#16171a] text-white text-xs font-extrabold hover:bg-black transition whitespace-nowrap cursor-pointer">
+                  Sign In / Register
+                </button>
+              </SignInButton>
+            </BentoCard>
+          )}
         </div>
       )}
     </div>
@@ -1081,13 +1192,18 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  // NO fake "1" badge!
-  const navItems = [
-    { id: "home", label: "Analyze", icon: <IconDashboard />, badge: null },
-    { id: "dashboard", label: "Dashboard", icon: <IconReports />, badge: null },
-    { id: "history", label: "History", icon: <IconHome />, badge: null },
-    { id: "profile", label: "Profile", icon: <IconUsers />, badge: null },
-  ];
+  // Navigation items: only Analyze & Profile for guests; Dashboard & History for logged-in users
+  const navItems = user
+    ? [
+        { id: "home", label: "Analyze", icon: <IconDashboard />, badge: null },
+        { id: "dashboard", label: "Dashboard", icon: <IconReports />, badge: null },
+        { id: "history", label: "History", icon: <IconHome />, badge: null },
+        { id: "profile", label: "Profile", icon: <IconUsers />, badge: null },
+      ]
+    : [
+        { id: "home", label: "Analyze", icon: <IconDashboard />, badge: null },
+        { id: "profile", label: "Profile", icon: <IconUsers />, badge: null },
+      ];
 
   return (
     <div className="min-h-screen bg-[#d7ebd0] p-2 sm:p-5 flex items-center justify-center font-sans antialiased text-[#111214]">
@@ -1177,16 +1293,18 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
 
             {/* Search Pill & Notification Bell */}
             <div className="flex items-center gap-3 relative">
-              <div className="hidden sm:flex items-center gap-2 bg-white rounded-full py-2 px-4 shadow-2xs border border-[#e8eaee] w-64">
-                <IconSearch />
-                <input
-                  type="text"
-                  placeholder="Search archive…"
-                  onClick={() => navigate("history")}
-                  className="bg-transparent text-xs text-[#111214] placeholder-[#8c9099] focus:outline-none w-full font-medium cursor-pointer"
-                  readOnly
-                />
-              </div>
+              {user && (
+                <div className="hidden sm:flex items-center gap-2 bg-white rounded-full py-2 px-4 shadow-2xs border border-[#e8eaee] w-64">
+                  <IconSearch />
+                  <input
+                    type="text"
+                    placeholder="Search archive…"
+                    onClick={() => navigate("history")}
+                    className="bg-transparent text-xs text-[#111214] placeholder-[#8c9099] focus:outline-none w-full font-medium cursor-pointer"
+                    readOnly
+                  />
+                </div>
+              )}
 
               {/* Notification Button */}
               <button
@@ -1281,13 +1399,10 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
               />
             )}
             {page === "dashboard" && (
-              <DashboardPage user={user} />
+              user ? <DashboardPage user={user} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} />
             )}
             {page === "history" && (
-              <HistoryPage
-                setPage={navigate}
-                setResultState={setResultState}
-              />
+              user ? <HistoryPage setPage={navigate} setResultState={setResultState} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} />
             )}
             {page === "profile" && (
               <ProfilePage
