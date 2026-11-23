@@ -29,6 +29,15 @@ function fmtDateTime(iso) {
   } catch { return iso; }
 }
 
+function fmtRelativeTime(ts) {
+  if (!ts) return "Just now";
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 // ─── ICONS ────────────────────────────────────────────────────────────────────
 
 function IconFluxLogo() {
@@ -363,7 +372,7 @@ function FeedbackButtons({ analysisId, findingIndex }) {
 
 // ─── ANALYZE PAGE (CLEAN, NO FAKE DATA) ────────────────────────────────────────
 
-function AnalyzePage({ user, setPage, setResultState }) {
+function AnalyzePage({ user, setPage, setResultState, onNotify }) {
   const [text, setText] = useState("");
   const [context, setContext] = useState("general");
   const [saveToHistory, setSaveToHistory] = useState(true);
@@ -378,6 +387,9 @@ function AnalyzePage({ user, setPage, setResultState }) {
     setLoading(true);
     try {
       const res = await api.post("/analyze/", { text, context, save: saveToHistory });
+      const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+      const score = Math.round(res.data.bias_score ?? res.data.footprint ?? 0);
+      onNotify?.("Analysis Completed", `Analyzed ${wordCount} words · Bias score: ${score}/100.`);
       setResultState({ result: res.data, originalText: text });
       setPage("results");
     } catch (err) {
@@ -972,7 +984,7 @@ function DashboardPage({ user }) {
 
 // ─── HISTORY PAGE ─────────────────────────────────────────────────────────────
 
-function HistoryPage({ setPage, setResultState }) {
+function HistoryPage({ setPage, setResultState, onNotify }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -992,6 +1004,7 @@ function HistoryPage({ setPage, setResultState }) {
     try {
       await api.delete(`/history/${id}/delete/`);
       setItems(prev => prev.filter(i => i.id !== id));
+      onNotify?.("Archive Updated", `Deleted analysis entry #${id}.`);
     } catch { /* silent */ }
   };
 
@@ -1048,7 +1061,7 @@ function HistoryPage({ setPage, setResultState }) {
 
 // ─── PROFILE PAGE (FUNCTIONAL USERNAME & PASSWORD CHANGE) ────────────────
 
-function ProfilePage({ user, onProfileUpdate, onLogout, setPage }) {
+function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(Boolean(user));
   const [isEditing, setIsEditing] = useState(false);
@@ -1116,10 +1129,12 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage }) {
         const updatedName = res.data.username || trimmed;
         setProfile((prev) => ({ ...prev, username: updatedName }));
         onProfileUpdate({ username: updatedName });
+        onNotify?.("Profile Updated", `Username updated to "${updatedName}".`);
       } else {
         localStorage.setItem("guest_username", trimmed);
         setProfile((prev) => ({ ...prev, username: trimmed }));
         onProfileUpdate({ username: trimmed });
+        onNotify?.("Profile Updated", `Guest username updated to "${trimmed}".`);
       }
       setMsg("Username updated successfully!");
       setIsEditing(false);
@@ -1155,6 +1170,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage }) {
         new_password: newPwd.trim(),
       });
       setPwdMsg(res.data.message || "Password changed successfully!");
+      onNotify?.("Security Updated", "Account password changed successfully.");
       setOldPwd("");
       setNewPwd("");
       setConfirmPwd("");
@@ -1413,7 +1429,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage }) {
 
 // ─── NATIVE AUTH PAGES ──────────────────────────────────────────────────
 
-function LoginPage({ setPage, onLogin }) {
+function LoginPage({ setPage, onLogin, onNotify }) {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1435,6 +1451,7 @@ function LoginPage({ setPage, onLogin }) {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       onLogin({ username: res.data.username, email: res.data.email });
+      onNotify?.("Signed In", `Signed in as @${res.data.username}. Session active.`);
       setPage("home");
     } catch (err) {
       setError(err.response?.data?.error || "Invalid username or password.");
@@ -1527,7 +1544,7 @@ function LoginPage({ setPage, onLogin }) {
   );
 }
 
-function RegisterPage({ setPage, onLogin }) {
+function RegisterPage({ setPage, onLogin, onNotify }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -1562,6 +1579,7 @@ function RegisterPage({ setPage, onLogin }) {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       onLogin({ username: res.data.username, email: res.data.email });
+      onNotify?.("Account Created", `Account created successfully for @${res.data.username}!`);
       setPage("home");
     } catch (err) {
       setError(err.response?.data?.error || "Registration failed. Try a different username or email.");
@@ -1673,7 +1691,7 @@ function RegisterPage({ setPage, onLogin }) {
   );
 }
 
-function ForgotPasswordPage({ setPage, onResetTokenReady }) {
+function ForgotPasswordPage({ setPage, onResetTokenReady, onNotify }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -1695,6 +1713,7 @@ function ForgotPasswordPage({ setPage, onResetTokenReady }) {
     try {
       const res = await api.post("/forgot-password/", { email: email.trim() });
       setSuccessMsg(res.data.message || "Password reset token generated.");
+      onNotify?.("Reset Token Generated", `Verification token ready for ${email.trim()}.`);
       if (res.data.reset_token) {
         setGeneratedToken(res.data.reset_token);
         if (onResetTokenReady) onResetTokenReady(res.data.reset_token);
@@ -1789,7 +1808,7 @@ function ForgotPasswordPage({ setPage, onResetTokenReady }) {
   );
 }
 
-function ResetPasswordPage({ setPage, initialToken = "" }) {
+function ResetPasswordPage({ setPage, initialToken = "", onNotify }) {
   const [token, setToken] = useState(initialToken);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1825,6 +1844,7 @@ function ResetPasswordPage({ setPage, initialToken = "" }) {
         new_password: newPassword.trim(),
       });
       setSuccess(true);
+      onNotify?.("Password Reset", "Your password has been successfully reset. You can now sign in.");
     } catch (err) {
       setError(err.response?.data?.error || "Invalid or expired token. Please generate a new one.");
     } finally {
@@ -1932,13 +1952,69 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
   const [resultState, setResultState] = useState(null);
   const [resetToken, setResetToken] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: "Heuristic Engine Active", desc: "5-axis linguistic bias patterns calibrated.", time: "Just now", read: false },
-    { id: 2, title: "Supabase Pipeline Live", desc: "Remote PostgreSQL database connection verified.", time: "5m ago", read: false },
-    { id: 3, title: "Advisory Mode Ready", desc: "Evaluated against standard unbiased corpora.", time: "1h ago", read: true },
-  ]);
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem("unbiasify_notifications");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const notify = useCallback((title, desc) => {
+    const item = {
+      id: Date.now() + Math.random(),
+      title,
+      desc,
+      timestamp: Date.now(),
+      read: false,
+    };
+    setNotifications((prev) => {
+      const next = [item, ...prev.filter((n) => n.title !== title || n.desc !== desc)].slice(0, 30);
+      try {
+        localStorage.setItem("unbiasify_notifications", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const markAllRead = () => {
+    setNotifications((prev) => {
+      const next = prev.map((n) => ({ ...n, read: true }));
+      try {
+        localStorage.setItem("unbiasify_notifications", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    try {
+      localStorage.removeItem("unbiasify_notifications");
+    } catch {}
+  };
+
+  const dismissNotification = (id) => {
+    setNotifications((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      try {
+        localStorage.setItem("unbiasify_notifications", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleLogout = () => {
+    notify("Session Ended", "You have signed out. Running in guest session.");
+    onLogout();
+  };
+
+  const handleLogin = (u) => {
+    onLogin(u);
+  };
 
   const navigate = useCallback((p) => {
     setPage(p);
@@ -2067,31 +2143,49 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
                 )}
               </button>
 
-              {/* Working Notifications Dropdown */}
+              {/* Live Dynamic Notifications Dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 top-12 w-80 bg-white rounded-3xl shadow-xl border border-[#e8eaee] p-4 z-50">
                   <div className="flex items-center justify-between pb-3 border-b border-[#f0f2f5]">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-[#111214]">System Notifications</span>
+                      <span className="text-xs font-black text-[#111214]">Notifications</span>
                       {unreadCount > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-[#d2f84b] text-[#16171a] text-[10px] font-black">
                           {unreadCount} new
                         </span>
                       )}
                     </div>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={() => setNotifications(notifications.map((n) => ({ ...n, read: true })))}
-                        className="text-[10px] font-bold text-[#5f6672] hover:text-[#111214] cursor-pointer"
-                      >
-                        Mark all read
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2.5">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllRead}
+                          className="text-[10px] font-bold text-[#5f6672] hover:text-[#111214] cursor-pointer"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={clearAllNotifications}
+                          className="text-[10px] font-bold text-[#8c9099] hover:text-rose-500 cursor-pointer"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-2 mt-3 max-h-64 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <p className="text-xs text-[#8c9099] text-center py-4 font-medium">No active notifications</p>
+                      <div className="py-8 text-center px-4">
+                        <div className="w-8 h-8 rounded-full bg-[#f4f5f7] border border-[#e8eaee] flex items-center justify-center mx-auto mb-2 text-[#8c9099]">
+                          <IconBell />
+                        </div>
+                        <p className="text-xs font-bold text-[#111214]">No notifications</p>
+                        <p className="text-[11px] text-[#8c9099] mt-0.5 font-medium leading-snug">
+                          Live updates for analyses, archive updates, and account actions will appear here.
+                        </p>
+                      </div>
                     ) : (
                       notifications.map((n) => (
                         <div
@@ -2104,10 +2198,12 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
                           <div>
                             <p className="text-xs font-bold text-[#111214]">{n.title}</p>
                             <p className="text-[11px] text-[#5f6672] mt-0.5 leading-snug">{n.desc}</p>
-                            <span className="text-[10px] text-[#8c9099] mt-1 block">{n.time}</span>
+                            <span className="text-[10px] text-[#8c9099] mt-1 block">
+                              {n.timestamp ? fmtRelativeTime(n.timestamp) : n.time || "Just now"}
+                            </span>
                           </div>
                           <button
-                            onClick={() => setNotifications(notifications.filter((x) => x.id !== n.id))}
+                            onClick={() => dismissNotification(n.id)}
                             className="text-[#8c9099] hover:text-rose-500 text-xs p-1 cursor-pointer"
                             title="Dismiss"
                           >
@@ -2122,7 +2218,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
 
               {user ? (
                 <button
-                  onClick={onLogout}
+                  onClick={handleLogout}
                   className="px-4 py-2 rounded-full text-xs font-bold text-[#5f6672] hover:text-rose-600 bg-white border border-[#e8eaee] hover:border-rose-200 hover:bg-rose-50/50 transition cursor-pointer"
                 >
                   Sign Out
@@ -2153,6 +2249,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
                 user={user}
                 setPage={navigate}
                 setResultState={setResultState}
+                onNotify={notify}
               />
             )}
             {page === "results" && resultState && (
@@ -2162,35 +2259,38 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
               />
             )}
             {page === "dashboard" && (
-              user ? <DashboardPage user={user} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} />
+              user ? <DashboardPage user={user} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} onNotify={notify} />
             )}
             {page === "history" && (
-              user ? <HistoryPage setPage={navigate} setResultState={setResultState} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} />
+              user ? <HistoryPage setPage={navigate} setResultState={setResultState} onNotify={notify} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} onNotify={notify} />
             )}
             {page === "profile" && (
               <ProfilePage
                 user={user}
                 onProfileUpdate={onProfileUpdate}
-                onLogout={onLogout}
+                onLogout={handleLogout}
                 setPage={navigate}
+                onNotify={notify}
               />
             )}
             {page === "login" && (
-              <LoginPage setPage={navigate} onLogin={onLogin} />
+              <LoginPage setPage={navigate} onLogin={handleLogin} onNotify={notify} />
             )}
             {page === "register" && (
-              <RegisterPage setPage={navigate} onLogin={onLogin} />
+              <RegisterPage setPage={navigate} onLogin={handleLogin} onNotify={notify} />
             )}
             {page === "forgot" && (
               <ForgotPasswordPage
                 setPage={navigate}
                 onResetTokenReady={(tok) => setResetToken(tok)}
+                onNotify={notify}
               />
             )}
             {page === "reset" && (
               <ResetPasswordPage
                 setPage={navigate}
                 initialToken={resetToken}
+                onNotify={notify}
               />
             )}
           </div>
