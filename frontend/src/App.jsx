@@ -1315,12 +1315,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate, hasClerkKey }) 
           {/* Bottom Feature Card */}
           <div className="mt-8 rounded-3xl bg-[#d2f84b] p-5 text-[#16171a] shadow-sm flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="font-black text-sm tracking-tight">Objective Writing</p>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#16171a] text-white">
-                  Live
-                </span>
-              </div>
+              <p className="font-black text-sm tracking-tight mb-1.5">Objective Writing</p>
               <p className="text-[11px] font-semibold text-[#16171a]/85 leading-snug">
                 Detect loaded framing, covert stereotypes, and tone slant before you publish.
               </p>
