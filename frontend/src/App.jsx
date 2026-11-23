@@ -435,65 +435,132 @@ function AnalyzePage({ user, setPage, setResultState }) {
         </div>
       </BentoCard>
 
-      {/* Clean Detection Information Cards */}
+      {/* Modern Bento Feature Grid (High Contrast & Visual Metrics) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Categories */}
-        <BentoCard className="p-5 flex flex-col justify-between">
+        {/* Card 1: 4-Axis Bias Matrix */}
+        <BentoCard className="p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-2 h-2 rounded-full bg-[#d2f84b]" />
-              <h3 className="font-black text-sm text-[#111214]">4 Bias Categories</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b] shadow-xs" />
+                <h3 className="font-extrabold text-sm text-[#111214]">4-Axis Bias Matrix</h3>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#f4f5f7] text-[#5f6672]">
+                Calibrated
+              </span>
             </div>
-            <div className="space-y-2.5 text-xs">
-              {Object.entries(CATEGORY_CONFIG).map(([k, cfg]) => (
-                <div key={k} className="p-2 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
-                  <p className="font-bold text-[#111214]">{cfg.label}</p>
-                  <p className="text-[11px] text-[#5f6672] mt-0.5 leading-snug">{cfg.desc}</p>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-2xl bg-[#f0effe] border border-[#d3ceff]/60 flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#4b3fbd]">Emotive</span>
+                <p className="font-extrabold text-xs text-[#111214] mt-1">Loaded Language</p>
+                <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Charged adjectives & sensationalism</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#eff6ff] border border-[#bfdbfe]/60 flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#1d4ed8]">Sweeping</span>
+                <p className="font-extrabold text-xs text-[#111214] mt-1">Generalization</p>
+                <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Claims without factual attribution</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#f7fde6] border border-[#dcf589] flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#365314]">Demographic</span>
+                <p className="font-extrabold text-xs text-[#111214] mt-1">Stereotyping</p>
+                <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Attributing roles to social groups</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-[#fefce8] border border-[#fef08a] flex flex-col justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#854d0e]">Selective</span>
+                <p className="font-extrabold text-xs text-[#111214] mt-1">One-Sided</p>
+                <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Omitting counter-arguments</p>
+              </div>
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Card 2: Tone & Sentiment Metrics */}
+        <BentoCard className="p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#b6b0fc] shadow-xs" />
+                <h3 className="font-extrabold text-sm text-[#111214]">Tone & Readability</h3>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#f4f5f7] text-[#5f6672]">
+                Multivariate
+              </span>
+            </div>
+
+            <div className="space-y-3.5">
+              {/* Spectrum indicator */}
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
+                <div className="flex justify-between items-center text-[11px] font-extrabold text-[#111214] mb-1.5">
+                  <span>Sentiment Polarity</span>
+                  <span className="text-[#8c9099] font-mono">−1.0 → +1.0</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </BentoCard>
-
-        {/* Tone & Readability */}
-        <BentoCard className="p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-2 h-2 rounded-full bg-[#b6b0fc]" />
-              <h3 className="font-black text-sm text-[#111214]">Tone & Readability</h3>
-            </div>
-            <div className="space-y-3 text-xs text-[#5f6672]">
-              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
-                <p className="font-bold text-[#111214] mb-1">Sentiment & Polarity</p>
-                <p className="text-[11px] leading-relaxed">
-                  Measures negative, neutral, or positive emotional orientation calibrated on a −1.0 to +1.0 polarity scale.
-                </p>
+                <div className="h-2 w-full rounded-full bg-gradient-to-r from-rose-400 via-amber-300 to-[#d2f84b] rounded-full" />
+                <div className="flex justify-between text-[9px] font-bold text-[#8c9099] mt-1">
+                  <span>Critical</span>
+                  <span>Neutral</span>
+                  <span>Favorable</span>
+                </div>
               </div>
-              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
-                <p className="font-bold text-[#111214] mb-1">Flesch Reading Ease</p>
-                <p className="text-[11px] leading-relaxed">
-                  Evaluates structural sentence complexity and word length to assess general public accessibility.
-                </p>
+
+              {/* Tone dimensions */}
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] space-y-2">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-[#5f6672]">Formality Spectrum</span>
+                  <span className="font-black text-[#111214]">Diction Rigor</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-[#5f6672]">Warmth Index</span>
+                  <span className="font-black text-[#111214]">Empathic Tone</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-[#5f6672]">Flesch Accessibility</span>
+                  <span className="font-black text-[#111214]">Reading Ease</span>
+                </div>
               </div>
             </div>
           </div>
         </BentoCard>
 
-        {/* System Pipeline */}
-        <BentoCard className="p-5 flex flex-col justify-between">
+        {/* Card 3: Dark Mode Accent — Privacy & Explainable AI */}
+        <div className="p-6 rounded-3xl bg-[#16171a] text-white flex flex-col justify-between shadow-xl relative overflow-hidden">
+          <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-[#d2f84b]/10 blur-2xl pointer-events-none" />
+
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-2 h-2 rounded-full bg-[#16171a]" />
-              <h3 className="font-black text-sm text-[#111214]">Advisory Evidence</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b]" />
+                <h3 className="font-extrabold text-sm text-white">Advisory Engine</h3>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-[#d2f84b]">
+                Privacy First
+              </span>
             </div>
-            <p className="text-xs text-[#5f6672] leading-relaxed mb-4">
-              Unbiasify scans text against weighted linguistic markers, attribution patterns, and semantic modifiers. Findings include contextual quotes and suggested replacements.
+
+            <p className="text-xs text-white/70 leading-relaxed font-medium mb-4">
+              Scans sentences against weighted heuristic attribution patterns. Never issues legal verdicts — surfaces evidence for human context.
             </p>
-            <div className="p-3 rounded-2xl bg-[#f0effe] border border-[#d3ceff] text-xs font-semibold text-[#4b3fbd]">
-              🔒 Ephemeral processing supported — uncheck "Save" to analyze without database persistence.
+
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/5 border border-white/10">
+                <span className="text-[#d2f84b] font-black text-sm">✓</span>
+                <span className="font-bold text-white/90">Character-level span citations</span>
+              </div>
+              <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/5 border border-white/10">
+                <span className="text-[#d2f84b] font-black text-sm">🔒</span>
+                <span className="font-bold text-white/90">Ephemeral in-memory processing option</span>
+              </div>
             </div>
           </div>
-        </BentoCard>
+
+          <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-bold text-white/60">
+            <span>Deterministic Scoring</span>
+            <span className="text-[#d2f84b] font-mono">100% Private</span>
+          </div>
+        </div>
       </div>
     </div>
   );
