@@ -466,20 +466,20 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
   const clear = () => { setText(""); setError(""); };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111214] tracking-tight">Perspective Workspace</h1>
-          <p className="text-sm font-medium text-[#717682] mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111214] tracking-tight">Perspective Workspace</h1>
+          <p className="text-xs sm:text-sm font-medium text-[#717682] mt-0.5">
             Real-time linguistic bias detection, loaded framing analysis, and neutral phrasing recommendations.
           </p>
         </div>
       </div>
 
       {/* Editor Bento Card */}
-      <BentoCard className="p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <BentoCard className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-black uppercase tracking-wider text-[#8c9099] mr-1">Context:</span>
             {CONTEXTS.map((c) => (
@@ -487,7 +487,7 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
                 key={c.value}
                 onClick={() => setContext(c.value)}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer",
+                  "px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer",
                   context === c.value
                     ? "bg-[#16171a] text-white shadow-xs"
                     : "bg-[#f4f5f7] text-[#5f6672] hover:bg-[#e8eaee]"
@@ -506,8 +506,8 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
 
         <textarea
           ref={textareaRef}
-          className="w-full bg-[#f9fafb] border border-[#e8eaee] rounded-2xl p-4 text-[#111214] placeholder-[#8c9099] text-sm sm:text-base leading-relaxed resize-none focus:outline-none focus:border-[#16171a] font-sans transition-all"
-          rows={6}
+          className="w-full bg-[#f9fafb] border border-[#e8eaee] rounded-2xl p-3.5 text-[#111214] placeholder-[#8c9099] text-sm sm:text-base leading-relaxed resize-none focus:outline-none focus:border-[#16171a] font-sans transition-all"
+          rows={4}
           placeholder="Paste or write any text here to inspect for loaded language, stereotyping, and framing slant…"
           value={text}
           onChange={(e) => { setText(e.target.value); setError(""); }}
@@ -515,7 +515,7 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
 
         {error && <div className="mt-3"><ErrorMsg msg={error} /></div>}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3 pt-1">
           {/* Excerpt prompts */}
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="font-bold text-[#8c9099] mr-1">Quick tests:</span>
@@ -559,9 +559,9 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
       </BentoCard>
 
       {/* Modern Bento Feature Grid (Standard Project Color Code) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
         {/* Card 1: 4-Axis Bias Matrix */}
-        <BentoCard className="p-6 flex flex-col justify-between">
+        <BentoCard className="p-4 sm:p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -1517,7 +1517,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
           <SuccessMsg msg={msg} />
 
           {/* 1. HERO PROFILE CARD */}
-          <BentoCard className="p-6 sm:p-7 relative overflow-hidden bg-white border border-[#e8eaee] shadow-sm">
+          <BentoCard className="p-6 sm:p-7 relative overflow-visible bg-white border border-[#e8eaee] shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               {/* Left: Avatar + Details */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
@@ -1547,16 +1547,16 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
 
                   {/* Dropdown Options: View Photo & Change Photo */}
                   {showAvatarMenu && userAvatar && (
-                    <div className="absolute left-0 top-full mt-2 w-44 bg-white rounded-2xl shadow-xl border border-[#e8eaee] p-1.5 z-50">
+                    <div className="absolute left-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-[#e8eaee] p-1.5 z-50">
                       <button
                         type="button"
                         onClick={() => {
                           setShowAvatarMenu(false);
                           setShowPhotoModal(true);
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-[#111214] hover:bg-[#f4f5f7] flex items-center gap-2 transition cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-[#111214] hover:bg-[#f4f5f7] flex items-center gap-2.5 transition cursor-pointer"
                       >
-                        <IconEye className="w-3.5 h-3.5 text-[#5f6672]" />
+                        <IconEye className="w-4 h-4 text-[#5f6672]" />
                         <span>View Photo</span>
                       </button>
                       <button
@@ -1565,9 +1565,9 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                           setShowAvatarMenu(false);
                           fileInputRef.current?.click();
                         }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-[#111214] hover:bg-[#f4f5f7] flex items-center gap-2 transition cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-[#111214] hover:bg-[#f4f5f7] flex items-center gap-2.5 transition cursor-pointer"
                       >
-                        <IconCamera className="w-3.5 h-3.5 text-[#5f6672]" />
+                        <IconCamera className="w-4 h-4 text-[#5f6672]" />
                         <span>Change Photo</span>
                       </button>
                     </div>
@@ -2843,7 +2843,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
           </header>
 
           {/* Dynamic Page View - Scroll strictly inside the cover */}
-          <div className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto min-h-0">
+          <div className="p-4 sm:p-5 lg:p-6 flex-1 overflow-y-auto min-h-0">
             {page === "home" && (
               <AnalyzePage
                 user={user}

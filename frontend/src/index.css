@@ -58,7 +58,7 @@
     transition: background-color 5000s ease-in-out 0s;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar - auto-hiding track and thumb */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -67,8 +67,12 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #cbd0d8;
+    background: transparent;
     border-radius: 9999px;
+    transition: background-color 0.2s ease;
+  }
+  *:hover::-webkit-scrollbar-thumb {
+    background: #cbd0d8;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #9aa1ad;
