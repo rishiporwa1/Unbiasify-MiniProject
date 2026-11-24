@@ -1117,7 +1117,7 @@ function HistoryPage({ setPage, setResultState, onNotify }) {
                   <span>{fmtDateTime(item.created_at)}</span>
                 </div>
               </div>
-              <button onClick={() => deleteItem(item.id)} className="p-2 hover:bg-rose-50 rounded-full transition cursor-pointer">
+              <button onClick={() => deleteItem(item.id)} className="p-2 text-[#8c9099] hover:text-[#111214] hover:bg-[#f4f5f7] rounded-full transition cursor-pointer" title="Delete record">
                 <IconTrash />
               </button>
             </BentoCard>
@@ -1181,47 +1181,38 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
       return;
     }
 
-    const isStale = Date.now() - lastProfileFetch > 45000;
-    if (isStale || !cachedProfileData) {
-      (async () => {
-        try {
-          const res = await api.get("/profile/");
-          cachedProfileData = res.data;
-          lastProfileFetch = Date.now();
-          setProfile(res.data);
-          setEditName(res.data.name || user?.name || res.data.username || "");
-          setEditUsername(res.data.username || user?.username || "");
-          setEditBio(res.data.bio || "");
-          setEditRole(res.data.role || "Perspective Researcher");
-        } catch {
-          if (!cachedProfileData) {
-            setProfile({
-              name: user?.name || user?.username || "Guest User",
-              username: user?.username || "guest",
-              email: user?.email || "guest@unbiasify.local",
-              avatar: "",
-              bio: "",
-              role: "Perspective Researcher",
-              date_joined: "Nov 2026",
-              total_analyses: 0,
-              positive: 0,
-              negative: 0,
-              neutral: 0,
-            });
-            setEditName(user?.name || user?.username || "Guest User");
-            setEditUsername(user?.username || "guest");
-          }
-        } finally {
-          setLoading(false);
+    (async () => {
+      try {
+        const res = await api.get("/profile/");
+        cachedProfileData = res.data;
+        lastProfileFetch = Date.now();
+        setProfile(res.data);
+        setEditName(res.data.name || user?.name || res.data.username || "");
+        setEditUsername(res.data.username || user?.username || "");
+        setEditBio(res.data.bio || "");
+        setEditRole(res.data.role || "Perspective Researcher");
+      } catch {
+        if (!cachedProfileData) {
+          setProfile({
+            name: user?.name || user?.username || "Guest User",
+            username: user?.username || "guest",
+            email: user?.email || "guest@unbiasify.local",
+            avatar: "",
+            bio: "",
+            role: "Perspective Researcher",
+            date_joined: "Nov 2026",
+            total_analyses: 0,
+            positive: 0,
+            negative: 0,
+            neutral: 0,
+          });
+          setEditName(user?.name || user?.username || "Guest User");
+          setEditUsername(user?.username || "guest");
         }
-      })();
-    } else {
-      setEditName(cachedProfileData.name || user?.name || cachedProfileData.username || "");
-      setEditUsername(cachedProfileData.username || user?.username || "");
-      setEditBio(cachedProfileData.bio || "");
-      setEditRole(cachedProfileData.role || "Perspective Researcher");
-      setLoading(false);
-    }
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [user, isGuest]);
 
   const handlePhotoSelect = (e) => {
@@ -1344,6 +1335,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
           name: updatedName,
           username: updatedUsername,
         };
+        lastProfileFetch = Date.now();
         setProfile((prev) => ({
           ...prev,
           name: updatedName,
@@ -1351,6 +1343,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
           bio: res.data.bio,
           role: res.data.role,
         }));
+        setEditName(updatedName);
+        setEditUsername(updatedUsername);
         onProfileUpdate({ name: updatedName, username: updatedUsername, bio: res.data.bio, role: res.data.role });
         onNotify?.("Profile Updated", "Name and username updated successfully.");
       } else {
@@ -1358,6 +1352,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
         localStorage.setItem("guest_username", trimmedUser);
         localStorage.setItem("guest_bio", editBio.trim());
         setProfile((prev) => ({ ...prev, name: trimmedName, username: trimmedUser, bio: editBio.trim() }));
+        setEditName(trimmedName);
+        setEditUsername(trimmedUser);
         onProfileUpdate({ name: trimmedName, username: trimmedUser, bio: editBio.trim() });
         onNotify?.("Profile Updated", `Guest profile updated to "${trimmedName}" (@${trimmedUser}).`);
       }
@@ -1500,9 +1496,17 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h2 className="text-2xl font-black text-[#111214] tracking-tight">{displayName}</h2>
                     <button
-                      onClick={() => { setIsEditing(!isEditing); setError(""); setMsg(""); }}
+                      onClick={() => {
+                        if (!isEditing) {
+                          setEditName(profile?.name || user?.name || "");
+                          setEditUsername(profile?.username || user?.username || "");
+                        }
+                        setIsEditing(!isEditing);
+                        setError("");
+                        setMsg("");
+                      }}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#5f6672] hover:text-[#111214] bg-[#f4f5f7] hover:bg-[#e8eaee] transition flex items-center gap-1 cursor-pointer border border-[#e8eaee]"
-                      title="Edit Name"
+                      title="Edit Details"
                     >
                       <IconEdit />
                       <span>{isEditing ? "Close" : "Edit Details"}</span>
@@ -1538,7 +1542,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
-                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-[#5f6672] hover:text-[#111214] hover:bg-[#e8eaee] bg-[#f4f5f7] border border-[#e8eaee] transition cursor-pointer"
                   >
                     Remove Photo
                   </button>
@@ -1581,12 +1585,11 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      placeholder="e.g. Rishi Porwal"
+                      placeholder="Full Name"
                       required
                       autoFocus
                       className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
                     />
-                    <p className="text-[10px] text-[#8c9099] mt-1 font-medium">Display name (multiple users can share the same name).</p>
                   </div>
 
                   <div>
@@ -1604,7 +1607,6 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                         className="w-full py-2.5 pl-8 pr-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold font-mono text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
                       />
                     </div>
-                    <p className="text-[10px] text-[#8c9099] mt-1 font-medium">Unique handle across Unbiasify.</p>
                   </div>
                 </div>
 
@@ -1711,14 +1713,14 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
             <button
               type="button"
               onClick={handleDeleteAccount}
-              className="px-4 py-2 rounded-full text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer text-left sm:text-center"
+              className="px-4 py-2 rounded-full text-xs font-bold text-[#5f6672] hover:text-[#111214] hover:bg-[#e8eaee] border border-[#e8eaee] bg-white transition cursor-pointer text-left sm:text-center"
             >
               Permanently Delete Account
             </button>
             <button
               type="button"
               onClick={onLogout}
-              className="px-6 py-2.5 rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold transition cursor-pointer shadow-2xs"
+              className="px-6 py-2.5 rounded-full border border-[#16171a] bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
             >
               Sign Out of Account
             </button>
@@ -2325,7 +2327,16 @@ function ResetPasswordPage({ setPage, initialToken = "", onNotify }) {
 // ─── MAIN APP FRAME (FLUX CANVAS & WORKING NOTIFICATIONS) ──────────────────────
 
 function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
-  const [page, setPage] = useState("home");
+  const [page, setPage] = useState(() => {
+    try {
+      const saved = localStorage.getItem("unbiasify_current_page");
+      const validPages = ["home", "dashboard", "history", "profile", "login", "register", "forgot", "reset"];
+      if (saved && validPages.includes(saved)) {
+        return saved;
+      }
+    } catch {}
+    return "home";
+  });
   const [resultState, setResultState] = useState(null);
   const [resetToken, setResetToken] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
@@ -2337,6 +2348,14 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
       return [];
     }
   });
+
+  useEffect(() => {
+    try {
+      if (page && page !== "results") {
+        localStorage.setItem("unbiasify_current_page", page);
+      }
+    } catch {}
+  }, [page]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -2385,6 +2404,10 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
   };
 
   const handleLogout = () => {
+    try {
+      localStorage.setItem("unbiasify_current_page", "home");
+    } catch {}
+    setPage("home");
     notify("Session Ended", "You have signed out. Running in guest session.");
     onLogout();
   };
@@ -2557,7 +2580,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
                       {notifications.length > 0 && (
                         <button
                           onClick={clearAllNotifications}
-                          className="text-[10px] font-bold text-[#8c9099] hover:text-rose-500 cursor-pointer"
+                          className="text-[10px] font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
                         >
                           Clear all
                         </button>
@@ -2594,7 +2617,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
                           </div>
                           <button
                             onClick={() => dismissNotification(n.id)}
-                            className="text-[#8c9099] hover:text-rose-500 text-xs p-1 cursor-pointer"
+                            className="text-[#8c9099] hover:text-[#111214] text-xs p-1 cursor-pointer"
                             title="Dismiss"
                           >
                             ✕
@@ -2609,7 +2632,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
               {user ? (
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 rounded-full text-xs font-bold text-[#5f6672] hover:text-rose-600 bg-white border border-[#e8eaee] hover:border-rose-200 hover:bg-rose-50/50 transition cursor-pointer"
+                  className="px-4 py-2 rounded-full text-xs font-bold text-[#111214] bg-white border border-[#e8eaee] hover:bg-[#f4f5f7] hover:border-[#16171a] transition cursor-pointer"
                 >
                   Sign Out
                 </button>
