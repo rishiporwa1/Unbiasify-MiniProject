@@ -43,14 +43,9 @@
     color: #111214;
     font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, sans-serif;
     min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-font-smoothing: antialiased;
-  }
-
-  @media (min-width: 768px) {
-    body {
-      height: 100vh;
-      overflow: hidden;
-    }
   }
 
   /* Browser autofill styling */

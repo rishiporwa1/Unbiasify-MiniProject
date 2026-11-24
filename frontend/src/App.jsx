@@ -502,21 +502,19 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
   const clear = () => { setText(""); setError(""); };
 
   return (
-    <div className="flex flex-col justify-between space-y-4 sm:space-y-5 h-full min-h-0">
+    <div className="space-y-5">
       {/* Top Section: Title & Editor Bento Card */}
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-4">
         {/* Title */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111214] tracking-tight">Perspective Workspace</h1>
-            <p className="text-xs sm:text-sm font-medium text-[#717682] mt-0.5">
-              Real-time linguistic bias detection, loaded framing analysis, and neutral phrasing recommendations.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111214] tracking-tight">Perspective Workspace</h1>
+          <p className="text-xs sm:text-sm font-medium text-[#717682] mt-0.5">
+            Real-time linguistic bias detection, loaded framing analysis, and neutral phrasing recommendations.
+          </p>
         </div>
 
         {/* Editor Bento Card */}
-        <BentoCard className="p-4 sm:p-5">
+        <BentoCard className="p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-[#8c9099] mr-1">Context:</span>
@@ -544,8 +542,8 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
 
           <textarea
             ref={textareaRef}
-            className="w-full bg-[#f9fafb] border border-[#e8eaee] rounded-2xl p-3.5 text-[#111214] placeholder-[#8c9099] text-sm sm:text-base leading-relaxed resize-none focus:outline-none focus:border-[#16171a] font-sans transition-all"
-            rows={4}
+            className="w-full bg-[#f9fafb] border border-[#e8eaee] rounded-2xl p-4 text-[#111214] placeholder-[#8c9099] text-sm sm:text-base leading-relaxed resize-none focus:outline-none focus:border-[#16171a] font-sans transition-all"
+            rows={5}
             placeholder="Paste or write any text here to inspect for loaded language, stereotyping, and framing slant…"
             value={text}
             onChange={(e) => { setText(e.target.value); setError(""); }}
@@ -553,7 +551,7 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
 
           {error && <div className="mt-3"><ErrorMsg msg={error} /></div>}
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-1">
             {/* Excerpt prompts */}
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
               <span className="font-bold text-[#8c9099] mr-1">Quick tests:</span>
@@ -597,12 +595,12 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
         </BentoCard>
       </div>
 
-      {/* Modern Bento Feature Grid (Standard Project Color Code) - Fills remaining height cleanly */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 flex-1 min-h-0">
+      {/* Modern Bento Feature Grid (Standard Project Color Code) - Natural content height */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Card 1: 4-Axis Bias Matrix */}
-        <BentoCard className="p-4 sm:p-5 flex flex-col justify-between h-full">
+        <BentoCard className="p-5 sm:p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b]" />
                 <h3 className="font-extrabold text-sm text-[#111214]">4-Axis Bias Matrix</h3>
@@ -612,26 +610,26 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Emotive</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">Loaded Language</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Charged adjectives & sensationalism</p>
               </div>
 
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Sweeping</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">Generalization</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Claims without factual attribution</p>
               </div>
 
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Demographic</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">Stereotyping</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Attributing roles to social groups</p>
               </div>
 
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] flex flex-col justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#16171a]">Selective</span>
                 <p className="font-extrabold text-xs text-[#111214] mt-1">One-Sided</p>
                 <p className="text-[10px] text-[#5f6672] mt-0.5 leading-tight">Omitting counter-arguments</p>
@@ -641,9 +639,9 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
         </BentoCard>
 
         {/* Card 2: Tone & Sentiment Metrics */}
-        <BentoCard className="p-4 sm:p-5 flex flex-col justify-between h-full">
+        <BentoCard className="p-5 sm:p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#b6b0fc]" />
                 <h3 className="font-extrabold text-sm text-[#111214]">Tone & Readability</h3>
@@ -653,9 +651,9 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
               </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {/* Spectrum indicator */}
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee]">
                 <div className="flex justify-between items-center text-[11px] font-extrabold text-[#111214] mb-1">
                   <span>Sentiment Polarity</span>
                   <span className="text-[#8c9099] font-mono">−1.0 → +1.0</span>
@@ -671,7 +669,7 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
               </div>
 
               {/* Tone dimensions */}
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] space-y-1.5">
+              <div className="p-3 rounded-2xl bg-[#f9fafb] border border-[#e8eaee] space-y-2">
                 <div className="flex justify-between text-xs font-bold">
                   <span className="text-[#5f6672]">Formality Spectrum</span>
                   <span className="font-black text-[#111214]">Diction Rigor</span>
@@ -690,9 +688,9 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
         </BentoCard>
 
         {/* Card 3: Advisory Engine (Standard White BentoCard) */}
-        <BentoCard className="p-4 sm:p-5 flex flex-col justify-between h-full">
+        <BentoCard className="p-5 sm:p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#16171a]" />
                 <h3 className="font-extrabold text-sm text-[#111214]">Advisory Engine</h3>
@@ -702,23 +700,23 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
               </span>
             </div>
 
-            <p className="text-xs text-[#5f6672] leading-relaxed font-medium mb-3">
+            <p className="text-xs text-[#5f6672] leading-relaxed font-medium mb-4">
               Scans sentences against weighted heuristic attribution patterns. Never issues legal verdicts — surfaces evidence for human context.
             </p>
 
             <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
                 <span className="w-4 h-4 rounded-full bg-[#d2f84b] text-[#16171a] flex items-center justify-center text-[10px] font-black shrink-0">✓</span>
                 <span className="font-bold text-[#111214] text-[11px] sm:text-xs">Character-level span citations</span>
               </div>
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#f9fafb] border border-[#e8eaee]">
                 <span className="w-4 h-4 rounded-full bg-[#16171a] text-white flex items-center justify-center text-[10px] font-black shrink-0">🔒</span>
                 <span className="font-bold text-[#111214] text-[11px] sm:text-xs">Ephemeral in-memory processing</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-3 pt-2.5 border-t border-[#f0f2f5] flex items-center justify-between text-[11px] font-bold text-[#8c9099]">
+          <div className="mt-4 pt-3 border-t border-[#f0f2f5] flex items-center justify-between text-[11px] font-bold text-[#8c9099]">
             <span>Deterministic Scoring</span>
             <span className="text-[#16171a] font-mono font-bold">100% Private</span>
           </div>
@@ -2793,9 +2791,9 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
       ];
 
   return (
-    <div className="min-h-screen md:h-screen w-full bg-[#d7ebd0] p-0 sm:p-2 md:p-4 lg:p-5 flex items-center justify-center font-sans antialiased text-[#111214] md:overflow-hidden">
+    <div className="min-h-screen w-full bg-[#d7ebd0] p-0 sm:p-3 md:p-4 lg:p-6 flex items-center justify-center font-sans antialiased text-[#111214]">
       {/* Outer Rounded Container matching the Flux Template ("Cover") */}
-      <div className="w-full max-w-[1440px] min-h-screen md:min-h-0 md:h-full bg-[#f4f5f7] rounded-none sm:rounded-[1.8rem] md:rounded-[2.4rem] shadow-2xl border-0 sm:border border-black/5 overflow-hidden flex flex-col md:flex-row relative">
+      <div className="w-full max-w-[1440px] bg-[#f4f5f7] rounded-none sm:rounded-[1.8rem] md:rounded-[2.4rem] shadow-2xl border-0 sm:border border-black/5 overflow-hidden flex flex-col md:flex-row relative my-auto">
         {/* Mobile Navigation Drawer Backdrop */}
         {mobileMenuOpen && (
           <div
@@ -2807,7 +2805,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
         {/* Left Dark Sidebar (#16171a) - Desktop static, Mobile slide-out drawer */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-72 bg-[#16171a] p-5 flex flex-col justify-between shrink-0 text-white overflow-y-auto transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:w-64 md:p-5 lg:p-6 md:h-full md:z-auto",
+            "fixed inset-y-0 left-0 z-50 w-72 bg-[#16171a] p-5 flex flex-col justify-between shrink-0 text-white overflow-y-auto transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:w-64 md:p-5 lg:p-6 md:z-auto",
             mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
           )}
         >
@@ -2870,7 +2868,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
         </aside>
 
         {/* Right Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#f4f5f7]">
+        <main className="flex-1 flex flex-col min-w-0 bg-[#f4f5f7]">
           {/* Top Bar */}
           <header className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 flex items-center justify-between gap-3 border-b border-[#e8eaee]/60 shrink-0 relative bg-[#f4f5f7] z-10">
             {/* Left: Mobile Hamburger + User Profile */}
@@ -3047,8 +3045,8 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
             </div>
           </header>
 
-          {/* Dynamic Page View - Scroll strictly inside the cover */}
-          <div className="p-4 sm:p-5 lg:p-6 flex-1 overflow-y-auto min-h-0">
+          {/* Dynamic Page View */}
+          <div className="p-4 sm:p-5 lg:p-6 flex-1 min-h-0">
             {page === "home" && (
               <AnalyzePage
                 user={user}
