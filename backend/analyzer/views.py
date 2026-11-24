@@ -57,10 +57,13 @@ def register(request):
 
     user = User.objects.create_user(username=username, password=password, email=email)
     refresh = RefreshToken.for_user(user)
+    display_name = user.first_name.strip() if user.first_name else user.username
     return Response({
         'access': str(refresh.access_token),
         'refresh': str(refresh),
+        'name': display_name,
         'username': user.username,
+        'display_name': display_name,
         'email': user.email,
     }, status=status.HTTP_201_CREATED)
 
@@ -87,10 +90,13 @@ def login(request):
         return Response({'error': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
 
     refresh = RefreshToken.for_user(user)
+    display_name = user.first_name.strip() if user.first_name else user.username
     return Response({
         'access': str(refresh.access_token),
         'refresh': str(refresh),
+        'name': display_name,
         'username': user.username,
+        'display_name': display_name,
         'email': user.email,
     })
 
@@ -210,18 +216,17 @@ def edit_profile(request):
     if user:
         profile_obj, _ = UserProfile.objects.get_or_create(user=user)
         if name is not None:
-            user.first_name = name
+            user.first_name = name.strip()
         if username is not None:
-            if not username:
-                return Response({'error': 'Name/Username cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
-            if user.username.startswith('user_'):
-                user.first_name = username
-            else:
-                if username != user.username and User.objects.filter(username=username).exists():
-                    return Response({'error': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
-                user.username = username
-                if not user.first_name:
-                    user.first_name = username
+            clean_username = username.strip().lstrip('@')
+            if not clean_username:
+                return Response({'error': 'Username cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+            if clean_username.lower() != user.username.lower():
+                if User.objects.filter(username__iexact=clean_username).exclude(id=user.id).exists():
+                    return Response({'error': f'Username "@{clean_username}" is already taken.'}, status=status.HTTP_400_BAD_REQUEST)
+                user.username = clean_username
+        if not user.first_name and user.username:
+            user.first_name = user.username
         if email:
             user.email = email
         user.save()
@@ -237,8 +242,8 @@ def edit_profile(request):
         display_name = user.first_name.strip() if user.first_name else user.username
         return Response({
             'name': display_name,
-            'username': display_name,
-            'user_handle': user.username,
+            'username': user.username,
+            'display_name': display_name,
             'email': user.email,
             'avatar': profile_obj.avatar,
             'bio': profile_obj.bio,
@@ -434,8 +439,8 @@ def profile(request):
         display_name = user.first_name.strip() if user.first_name else user.username
         return Response({
             'name': display_name,
-            'username': display_name,
-            'user_handle': user.username,
+            'username': user.username,
+            'display_name': display_name,
             'email': user.email,
             'date_joined': user.date_joined.strftime('%d %b %Y'),
             'avatar': profile_obj.avatar or '',
