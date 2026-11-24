@@ -2394,6 +2394,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
   const [resultState, setResultState] = useState(null);
   const [resetToken, setResetToken] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef(null);
   const [notifications, setNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem("unbiasify_notifications");
@@ -2402,6 +2403,21 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
       return [];
     }
   });
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showNotifications]);
 
   useEffect(() => {
     try {
@@ -2598,90 +2614,92 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
                 </div>
               )}
 
-              {/* Notification Button */}
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="w-9 h-9 rounded-full bg-white border border-[#e8eaee] flex items-center justify-center relative shadow-2xs cursor-pointer hover:bg-[#f4f5f7] transition"
-                title="Notifications"
-              >
-                <IconBell />
-                {unreadCount > 0 && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b] border-2 border-white absolute top-1.5 right-1.5" />
-                )}
-              </button>
+              {/* Notification Button & Live Dropdown with Click-Outside */}
+              <div ref={notifRef} className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="w-9 h-9 rounded-full bg-white border border-[#e8eaee] flex items-center justify-center relative shadow-2xs cursor-pointer hover:bg-[#f4f5f7] transition"
+                  title="Notifications"
+                >
+                  <IconBell />
+                  {unreadCount > 0 && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#d2f84b] border-2 border-white absolute top-1.5 right-1.5" />
+                  )}
+                </button>
 
-              {/* Live Dynamic Notifications Dropdown */}
-              {showNotifications && (
-                <div className="absolute right-0 top-12 w-80 bg-white rounded-3xl shadow-xl border border-[#e8eaee] p-4 z-50">
-                  <div className="flex items-center justify-between pb-3 border-b border-[#f0f2f5]">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-[#111214]">Notifications</span>
-                      {unreadCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-[#d2f84b] text-[#16171a] text-[10px] font-black">
-                          {unreadCount} new
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllRead}
-                          className="text-[10px] font-bold text-[#5f6672] hover:text-[#111214] cursor-pointer"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                      {notifications.length > 0 && (
-                        <button
-                          onClick={clearAllNotifications}
-                          className="text-[10px] font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
-                        >
-                          Clear all
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 mt-3 max-h-64 overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="py-8 text-center px-4">
-                        <div className="w-8 h-8 rounded-full bg-[#f4f5f7] border border-[#e8eaee] flex items-center justify-center mx-auto mb-2 text-[#8c9099]">
-                          <IconBell />
-                        </div>
-                        <p className="text-xs font-bold text-[#111214]">No notifications</p>
-                        <p className="text-[11px] text-[#8c9099] mt-0.5 font-medium leading-snug">
-                          Live updates for analyses, archive updates, and account actions will appear here.
-                        </p>
+                {/* Live Dynamic Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 top-12 w-80 bg-white rounded-3xl shadow-xl border border-[#e8eaee] p-4 z-50">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#f0f2f5]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#111214]">Notifications</span>
+                        {unreadCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-[#d2f84b] text-[#16171a] text-[10px] font-black">
+                            {unreadCount} new
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          className={cn(
-                            "p-3 rounded-2xl border transition-colors flex items-start justify-between gap-2",
-                            n.read ? "bg-[#f9fafb] border-[#e8eaee]" : "bg-[#f7fde6] border-[#dcf589]"
-                          )}
-                        >
-                          <div>
-                            <p className="text-xs font-bold text-[#111214]">{n.title}</p>
-                            <p className="text-[11px] text-[#5f6672] mt-0.5 leading-snug">{n.desc}</p>
-                            <span className="text-[10px] text-[#8c9099] mt-1 block">
-                              {n.timestamp ? fmtRelativeTime(n.timestamp) : n.time || "Just now"}
-                            </span>
-                          </div>
+                      <div className="flex items-center gap-2.5">
+                        {unreadCount > 0 && (
                           <button
-                            onClick={() => dismissNotification(n.id)}
-                            className="text-[#8c9099] hover:text-[#111214] text-xs p-1 cursor-pointer"
-                            title="Dismiss"
+                            onClick={markAllRead}
+                            className="text-[10px] font-bold text-[#5f6672] hover:text-[#111214] cursor-pointer"
                           >
-                            ✕
+                            Mark all read
                           </button>
+                        )}
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={clearAllNotifications}
+                            className="text-[10px] font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mt-3 max-h-64 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 text-center px-4">
+                          <div className="w-8 h-8 rounded-full bg-[#f4f5f7] border border-[#e8eaee] flex items-center justify-center mx-auto mb-2 text-[#8c9099]">
+                            <IconBell />
+                          </div>
+                          <p className="text-xs font-bold text-[#111214]">No notifications</p>
+                          <p className="text-[11px] text-[#8c9099] mt-0.5 font-medium leading-snug">
+                            Live updates for analyses, archive updates, and account actions will appear here.
+                          </p>
                         </div>
-                      ))
-                    )}
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            className={cn(
+                              "p-3 rounded-2xl border transition-colors flex items-start justify-between gap-2",
+                              n.read ? "bg-[#f9fafb] border-[#e8eaee]" : "bg-[#f7fde6] border-[#dcf589]"
+                            )}
+                          >
+                            <div>
+                              <p className="text-xs font-bold text-[#111214]">{n.title}</p>
+                              <p className="text-[11px] text-[#5f6672] mt-0.5 leading-snug">{n.desc}</p>
+                              <span className="text-[10px] text-[#8c9099] mt-1 block">
+                                {n.timestamp ? fmtRelativeTime(n.timestamp) : n.time || "Just now"}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => dismissNotification(n.id)}
+                              className="text-[#8c9099] hover:text-[#111214] text-xs p-1 cursor-pointer"
+                              title="Dismiss"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {user ? (
                 <button
