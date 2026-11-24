@@ -2179,11 +2179,11 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
       ];
 
   return (
-    <div className="min-h-screen bg-[#d7ebd0] p-2 sm:p-5 flex items-center justify-center font-sans antialiased text-[#111214]">
-      {/* Outer Rounded Container matching the Flux Template */}
-      <div className="w-full max-w-[1400px] bg-[#f4f5f7] rounded-[2.2rem] shadow-2xl border border-black/5 overflow-hidden flex flex-col md:flex-row min-h-[860px]">
+    <div className="h-screen w-screen bg-[#d7ebd0] p-2 sm:p-3 md:p-4 lg:p-5 flex items-center justify-center font-sans antialiased text-[#111214] overflow-hidden">
+      {/* Outer Rounded Container matching the Flux Template ("Cover") */}
+      <div className="w-full max-w-[1440px] h-full max-h-full bg-[#f4f5f7] rounded-[1.8rem] sm:rounded-[2.4rem] shadow-2xl border border-black/5 overflow-hidden flex flex-col md:flex-row">
         {/* Left Dark Sidebar (#16171a) */}
-        <aside className="w-full md:w-64 bg-[#16171a] p-6 flex flex-col justify-between shrink-0 text-white">
+        <aside className="w-full md:w-64 bg-[#16171a] p-5 lg:p-6 flex flex-col justify-between shrink-0 text-white md:h-full overflow-y-auto">
           <div>
             {/* Brand Logo */}
             <div className="flex items-center gap-2.5 mb-8 cursor-pointer" onClick={() => navigate("home")}>
@@ -2217,7 +2217,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
           </div>
 
           {/* Bottom Feature Card */}
-          <div className="mt-8 rounded-3xl bg-[#d2f84b] p-5 text-[#16171a] shadow-sm flex flex-col justify-between">
+          <div className="mt-8 rounded-3xl bg-[#d2f84b] p-5 text-[#16171a] shadow-sm flex flex-col justify-between shrink-0">
             <div>
               <p className="font-black text-sm tracking-tight mb-1.5">Objective Writing</p>
               <p className="text-[11px] font-semibold text-[#16171a]/85 leading-snug">
@@ -2234,9 +2234,9 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
         </aside>
 
         {/* Right Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#f4f5f7]">
+        <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#f4f5f7]">
           {/* Top Bar */}
-          <header className="px-6 sm:px-8 py-5 flex items-center justify-between gap-4 border-b border-[#e8eaee]/60 relative">
+          <header className="px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-4 border-b border-[#e8eaee]/60 shrink-0 relative bg-[#f4f5f7] z-10">
             {/* User Profile */}
             <div className="flex items-center gap-3">
               {user ? (
@@ -2385,8 +2385,8 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
             </div>
           </header>
 
-          {/* Dynamic Page View */}
-          <div className="p-6 sm:p-8 flex-1 overflow-y-auto">
+          {/* Dynamic Page View - Scroll strictly inside the cover */}
+          <div className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto min-h-0">
             {page === "home" && (
               <AnalyzePage
                 user={user}
