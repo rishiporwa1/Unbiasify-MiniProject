@@ -61,6 +61,8 @@ def register(request):
     return Response({
         'access': str(refresh.access_token),
         'refresh': str(refresh),
+        'first_name': user.first_name.strip(),
+        'last_name': user.last_name.strip(),
         'name': display_name,
         'username': user.username,
         'display_name': display_name,
@@ -94,6 +96,8 @@ def login(request):
     return Response({
         'access': str(refresh.access_token),
         'refresh': str(refresh),
+        'first_name': user.first_name.strip(),
+        'last_name': user.last_name.strip(),
         'name': display_name,
         'username': user.username,
         'display_name': display_name,
@@ -206,7 +210,9 @@ def change_password(request):
 @permission_classes([AllowAny])
 def edit_profile(request):
     user = request.user if (request.user and request.user.is_authenticated) else None
-    name = request.data.get('name', '').strip() if 'name' in request.data else None
+    first_name = request.data.get('first_name', None)
+    last_name = request.data.get('last_name', None)
+    name = request.data.get('name', None)
     username = request.data.get('username', '').strip() if 'username' in request.data else None
     email = request.data.get('email', '').strip() if 'email' in request.data else None
     avatar = request.data.get('avatar', None)
@@ -215,8 +221,16 @@ def edit_profile(request):
 
     if user:
         profile_obj, _ = UserProfile.objects.get_or_create(user=user)
-        if name is not None:
-            user.first_name = name.strip()
+        if first_name is not None:
+            user.first_name = first_name.strip()
+        elif name is not None:
+            parts = name.strip().split(' ', 1)
+            user.first_name = parts[0]
+            if len(parts) > 1 and last_name is None:
+                user.last_name = parts[1]
+        if last_name is not None:
+            user.last_name = last_name.strip()
+
         if username is not None:
             clean_username = username.strip().lstrip('@')
             if not clean_username:
@@ -239,11 +253,13 @@ def edit_profile(request):
             profile_obj.role = role.strip()
         profile_obj.save()
 
-        display_name = user.first_name.strip() if user.first_name else user.username
+        display_first_name = user.first_name.strip() if user.first_name else user.username
         return Response({
-            'name': display_name,
+            'first_name': user.first_name.strip(),
+            'last_name': user.last_name.strip(),
+            'name': display_first_name,
+            'display_name': display_first_name,
             'username': user.username,
-            'display_name': display_name,
             'email': user.email,
             'avatar': profile_obj.avatar,
             'bio': profile_obj.bio,
@@ -438,6 +454,8 @@ def profile(request):
         profile_obj, _ = UserProfile.objects.get_or_create(user=user)
         display_name = user.first_name.strip() if user.first_name else user.username
         return Response({
+            'first_name': user.first_name.strip(),
+            'last_name': user.last_name.strip(),
             'name': display_name,
             'username': user.username,
             'display_name': display_name,

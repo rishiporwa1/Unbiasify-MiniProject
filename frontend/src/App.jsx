@@ -1134,7 +1134,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const [profile, setProfile] = useState(() => cachedProfileData);
   const [loading, setLoading] = useState(() => Boolean(user) && !cachedProfileData);
   const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(() => cachedProfileData?.name || user?.name || "");
+  const [editFirstName, setEditFirstName] = useState(() => cachedProfileData?.first_name || user?.first_name || "");
+  const [editLastName, setEditLastName] = useState(() => cachedProfileData?.last_name || user?.last_name || "");
   const [editUsername, setEditUsername] = useState(() => cachedProfileData?.username || user?.username || "");
   const [editBio, setEditBio] = useState(() => cachedProfileData?.bio || "");
   const [editRole, setEditRole] = useState(() => cachedProfileData?.role || "Perspective Researcher");
@@ -1157,12 +1158,15 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
 
   useEffect(() => {
     if (isGuest) {
-      const guestName = localStorage.getItem("guest_name") || "Guest User";
+      const guestFirst = localStorage.getItem("guest_first_name") || "Guest";
+      const guestLast = localStorage.getItem("guest_last_name") || "User";
       const guestUsername = localStorage.getItem("guest_username") || "guest";
       const guestAvatar = localStorage.getItem("guest_avatar") || "";
       const guestBio = localStorage.getItem("guest_bio") || "Guest Researcher · Analyses stored in local session.";
       setProfile({
-        name: guestName,
+        first_name: guestFirst,
+        last_name: guestLast,
+        name: guestFirst,
         username: guestUsername,
         email: "guest@unbiasify.local",
         avatar: guestAvatar,
@@ -1174,7 +1178,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
         negative: 0,
         neutral: 0,
       });
-      setEditName(guestName);
+      setEditFirstName(guestFirst);
+      setEditLastName(guestLast);
       setEditUsername(guestUsername);
       setEditBio(guestBio);
       setLoading(false);
@@ -1187,14 +1192,17 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
         cachedProfileData = res.data;
         lastProfileFetch = Date.now();
         setProfile(res.data);
-        setEditName(res.data.name || user?.name || res.data.username || "");
+        setEditFirstName(res.data.first_name || user?.first_name || "");
+        setEditLastName(res.data.last_name || user?.last_name || "");
         setEditUsername(res.data.username || user?.username || "");
         setEditBio(res.data.bio || "");
         setEditRole(res.data.role || "Perspective Researcher");
       } catch {
         if (!cachedProfileData) {
           setProfile({
-            name: user?.name || user?.username || "Guest User",
+            first_name: user?.first_name || "Guest",
+            last_name: user?.last_name || "",
+            name: user?.first_name || user?.name || "Guest",
             username: user?.username || "guest",
             email: user?.email || "guest@unbiasify.local",
             avatar: "",
@@ -1206,7 +1214,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
             negative: 0,
             neutral: 0,
           });
-          setEditName(user?.name || user?.username || "Guest User");
+          setEditFirstName(user?.first_name || "Guest");
+          setEditLastName(user?.last_name || "");
           setEditUsername(user?.username || "guest");
         }
       } finally {
@@ -1306,15 +1315,16 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     e.preventDefault();
     setError("");
     setMsg("");
-    const trimmedName = editName.trim();
+    const trimmedFirst = editFirstName.trim();
+    const trimmedLast = editLastName.trim();
     const trimmedUser = editUsername.trim().replace(/^@/, "");
 
-    if (!trimmedName) {
-      setError("Full name cannot be empty.");
+    if (!trimmedFirst) {
+      setError("First name cannot be empty.");
       return;
     }
     if (!trimmedUser) {
-      setError("Username cannot be empty.");
+      setError("Username handle cannot be empty.");
       return;
     }
 
@@ -1322,40 +1332,70 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     try {
       if (!isGuest) {
         const res = await api.patch("/profile/edit/", {
-          name: trimmedName,
+          first_name: trimmedFirst,
+          last_name: trimmedLast,
           username: trimmedUser,
           bio: editBio.trim(),
           role: editRole.trim(),
         });
-        const updatedName = res.data.name || trimmedName;
-        const updatedUsername = res.data.username || trimmedUser;
+        const updatedFirst = res.data.first_name || trimmedFirst;
+        const updatedLast = res.data.last_name || trimmedLast;
+        const updatedUser = res.data.username || trimmedUser;
         cachedProfileData = {
           ...cachedProfileData,
           ...res.data,
-          name: updatedName,
-          username: updatedUsername,
+          first_name: updatedFirst,
+          last_name: updatedLast,
+          name: updatedFirst,
+          username: updatedUser,
         };
         lastProfileFetch = Date.now();
         setProfile((prev) => ({
           ...prev,
-          name: updatedName,
-          username: updatedUsername,
+          first_name: updatedFirst,
+          last_name: updatedLast,
+          name: updatedFirst,
+          username: updatedUser,
           bio: res.data.bio,
           role: res.data.role,
         }));
-        setEditName(updatedName);
-        setEditUsername(updatedUsername);
-        onProfileUpdate({ name: updatedName, username: updatedUsername, bio: res.data.bio, role: res.data.role });
+        setEditFirstName(updatedFirst);
+        setEditLastName(updatedLast);
+        setEditUsername(updatedUser);
+        onProfileUpdate({
+          first_name: updatedFirst,
+          last_name: updatedLast,
+          name: updatedFirst,
+          username: updatedUser,
+          bio: res.data.bio,
+          role: res.data.role,
+        });
         onNotify?.("Profile Updated", "Name and username updated successfully.");
       } else {
-        localStorage.setItem("guest_name", trimmedName);
+        localStorage.setItem("guest_first_name", trimmedFirst);
+        localStorage.setItem("guest_last_name", trimmedLast);
+        localStorage.setItem("guest_name", trimmedFirst);
         localStorage.setItem("guest_username", trimmedUser);
         localStorage.setItem("guest_bio", editBio.trim());
-        setProfile((prev) => ({ ...prev, name: trimmedName, username: trimmedUser, bio: editBio.trim() }));
-        setEditName(trimmedName);
+        setProfile((prev) => ({
+          ...prev,
+          first_name: trimmedFirst,
+          last_name: trimmedLast,
+          name: trimmedFirst,
+          username: trimmedUser,
+          bio: editBio.trim(),
+        }));
+        setEditFirstName(trimmedFirst);
+        setEditLastName(trimmedLast);
         setEditUsername(trimmedUser);
-        onProfileUpdate({ name: trimmedName, username: trimmedUser, bio: editBio.trim() });
-        onNotify?.("Profile Updated", `Guest profile updated to "${trimmedName}" (@${trimmedUser}).`);
+        onProfileUpdate({
+          first_name: trimmedFirst,
+          last_name: trimmedLast,
+          name: trimmedFirst,
+          username: trimmedUser,
+          bio: editBio.trim(),
+        });
+        onNotify?.("Profile Updated", `Guest profile updated to "${trimmedFirst}" (@${trimmedUser}).`);
       }
       setMsg("Profile saved successfully!");
       setIsEditing(false);
@@ -1421,7 +1461,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     }
   };
 
-  const displayName = profile?.name || profile?.first_name || user?.name || user?.first_name || profile?.username || (isGuest ? "Guest User" : user?.username || "User");
+  const displayName = profile?.first_name || user?.first_name || profile?.name || user?.name || profile?.username || (isGuest ? "Guest User" : user?.username || "User");
   const usernameHandle = profile?.username || user?.username || "";
   const userAvatar = profile?.avatar || user?.avatar || "";
   const totalAnalyses = profile?.total_analyses || 0;
@@ -1498,7 +1538,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                     <button
                       onClick={() => {
                         if (!isEditing) {
-                          setEditName(profile?.name || user?.name || "");
+                          setEditFirstName(profile?.first_name || user?.first_name || "");
+                          setEditLastName(profile?.last_name || user?.last_name || "");
                           setEditUsername(profile?.username || user?.username || "");
                         }
                         setIsEditing(!isEditing);
@@ -1579,13 +1620,13 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                      Full Name
+                      First Name
                     </label>
                     <input
                       type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      placeholder="Full Name"
+                      value={editFirstName}
+                      onChange={(e) => setEditFirstName(e.target.value)}
+                      placeholder="First Name"
                       required
                       autoFocus
                       className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
@@ -1594,19 +1635,32 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                      Username Handle
+                      Last Name
                     </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#8c9099]">@</span>
-                      <input
-                        type="text"
-                        value={editUsername}
-                        onChange={(e) => setEditUsername(e.target.value)}
-                        placeholder="handle"
-                        required
-                        className="w-full py-2.5 pl-8 pr-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold font-mono text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={editLastName}
+                      onChange={(e) => setEditLastName(e.target.value)}
+                      placeholder="Last Name"
+                      className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                    Username Handle
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#8c9099]">@</span>
+                    <input
+                      type="text"
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      placeholder="handle"
+                      required
+                      className="w-full py-2.5 pl-8 pr-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold font-mono text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
+                    />
                   </div>
                 </div>
 
@@ -2499,7 +2553,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
               {user?.avatar ? (
                 <img
                   src={user.avatar}
-                  alt={user.name || user.username || "User"}
+                  alt={user.first_name || user.name || user.username || "User"}
                   className="w-9 h-9 rounded-full object-cover border border-black/10 shrink-0 cursor-pointer shadow-2xs hover:opacity-90 transition"
                   onClick={() => navigate("profile")}
                 />
@@ -2508,7 +2562,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
                   className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:bg-black transition"
                   onClick={() => navigate("profile")}
                 >
-                  {(user.name || user.username)?.[0]?.toUpperCase() || "U"}
+                  {(user.first_name || user.name || user.username)?.[0]?.toUpperCase() || "U"}
                 </div>
               ) : (
                 <div
@@ -2521,10 +2575,10 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
 
               <div className="text-left">
                 <p className="text-xs font-black text-[#111214] leading-tight">
-                  {user ? (user.name || user.username) : "Guest Researcher"}
+                  {user ? (user.first_name || user.name || user.username) : "Guest Researcher"}
                 </p>
                 <p className="text-[11px] font-medium text-[#8c9099] leading-tight">
-                  {user ? (user.username && user.name ? `@${user.username} · ${user.email}` : (user.username ? `@${user.username}` : user.email)) : "Guest Session Active"}
+                  {user ? (user.username && (user.first_name || user.name) ? `@${user.username} · ${user.email}` : (user.username ? `@${user.username}` : user.email)) : "Guest Session Active"}
                 </p>
               </div>
             </div>
@@ -2737,8 +2791,11 @@ export default function App() {
     (async () => {
       try {
         const res = await api.get("/profile/");
+        const displayFirst = res.data.first_name || res.data.name || res.data.display_name || res.data.username;
         const userData = {
-          name: res.data.name || res.data.display_name || res.data.username,
+          first_name: res.data.first_name || displayFirst,
+          last_name: res.data.last_name || "",
+          name: displayFirst,
           username: res.data.username,
           email: res.data.email,
           avatar: res.data.avatar || "",
@@ -2781,9 +2838,12 @@ export default function App() {
   };
 
   const handleLogin = (u) => {
+    const displayFirst = u.first_name || u.name || u.display_name || u.username;
     const userData = {
       ...u,
-      name: u.name || u.display_name || u.username,
+      first_name: u.first_name || displayFirst,
+      last_name: u.last_name || "",
+      name: displayFirst,
       username: u.username,
     };
     localStorage.setItem("cached_user", JSON.stringify(userData));
