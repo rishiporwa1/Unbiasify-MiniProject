@@ -200,6 +200,7 @@ def change_password(request):
 @permission_classes([AllowAny])
 def edit_profile(request):
     user = request.user if (request.user and request.user.is_authenticated) else None
+    name = request.data.get('name', '').strip() if 'name' in request.data else None
     username = request.data.get('username', '').strip() if 'username' in request.data else None
     email = request.data.get('email', '').strip() if 'email' in request.data else None
     avatar = request.data.get('avatar', None)
@@ -208,15 +209,19 @@ def edit_profile(request):
 
     if user:
         profile_obj, _ = UserProfile.objects.get_or_create(user=user)
+        if name is not None:
+            user.first_name = name
         if username is not None:
             if not username:
-                return Response({'error': 'Username cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Name/Username cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
             if user.username.startswith('user_'):
                 user.first_name = username
             else:
                 if username != user.username and User.objects.filter(username=username).exists():
                     return Response({'error': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
                 user.username = username
+                if not user.first_name:
+                    user.first_name = username
         if email:
             user.email = email
         user.save()
@@ -229,9 +234,11 @@ def edit_profile(request):
             profile_obj.role = role.strip()
         profile_obj.save()
 
-        display_name = user.first_name if (user.username.startswith('user_') and user.first_name) else user.username
+        display_name = user.first_name.strip() if user.first_name else user.username
         return Response({
+            'name': display_name,
             'username': display_name,
+            'user_handle': user.username,
             'email': user.email,
             'avatar': profile_obj.avatar,
             'bio': profile_obj.bio,
@@ -424,9 +431,11 @@ def profile(request):
             neutral=Count('id', filter=Q(sentiment__iexact='Neutral')),
         )
         profile_obj, _ = UserProfile.objects.get_or_create(user=user)
-        display_name = user.first_name if (user.username.startswith('user_') and user.first_name) else user.username
+        display_name = user.first_name.strip() if user.first_name else user.username
         return Response({
+            'name': display_name,
             'username': display_name,
+            'user_handle': user.username,
             'email': user.email,
             'date_joined': user.date_joined.strftime('%d %b %Y'),
             'avatar': profile_obj.avatar or '',

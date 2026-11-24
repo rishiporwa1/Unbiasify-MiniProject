@@ -1317,25 +1317,28 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     try {
       if (!isGuest) {
         const res = await api.patch("/profile/edit/", {
+          name: trimmedUser,
           username: trimmedUser,
           bio: editBio.trim(),
           role: editRole.trim(),
         });
-        const updatedName = res.data.username || trimmedUser;
+        const updatedName = res.data.name || res.data.username || trimmedUser;
         setProfile((prev) => ({
           ...prev,
+          name: updatedName,
           username: updatedName,
           bio: res.data.bio,
           role: res.data.role,
         }));
-        onProfileUpdate({ username: updatedName, bio: res.data.bio, role: res.data.role });
-        onNotify?.("Profile Updated", "Profile details updated successfully.");
+        onProfileUpdate({ name: updatedName, username: updatedName, bio: res.data.bio, role: res.data.role });
+        onNotify?.("Profile Updated", "Name and details updated successfully.");
       } else {
         localStorage.setItem("guest_username", trimmedUser);
+        localStorage.setItem("guest_name", trimmedUser);
         localStorage.setItem("guest_bio", editBio.trim());
-        setProfile((prev) => ({ ...prev, username: trimmedUser, bio: editBio.trim() }));
-        onProfileUpdate({ username: trimmedUser, bio: editBio.trim() });
-        onNotify?.("Profile Updated", `Guest profile updated to "${trimmedUser}".`);
+        setProfile((prev) => ({ ...prev, name: trimmedUser, username: trimmedUser, bio: editBio.trim() }));
+        onProfileUpdate({ name: trimmedUser, username: trimmedUser, bio: editBio.trim() });
+        onNotify?.("Profile Updated", `Guest name updated to "${trimmedUser}".`);
       }
       setMsg("Profile saved successfully!");
       setIsEditing(false);
@@ -1401,7 +1404,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     }
   };
 
-  const displayName = profile?.username || (isGuest ? "Guest User" : user?.username || "User");
+  const displayName = profile?.name || profile?.first_name || user?.name || user?.first_name || profile?.username || (isGuest ? "Guest User" : user?.username || "User");
   const userAvatar = profile?.avatar || user?.avatar || "";
   const totalAnalyses = profile?.total_analyses || 0;
 
@@ -1411,12 +1414,12 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111214] tracking-tight">
-            Account & Persona
+            Account Settings
           </h1>
           <p className="text-xs font-medium text-[#717682] mt-1">
             {isGuest
               ? "Running in sandbox guest mode. Upload a local photo or sign in for persistent cloud sync."
-              : "Manage your Unbiasify persona, profile picture, credentials, and telemetry preferences."}
+              : "Manage your Unbiasify profile picture, credentials, and details."}
           </p>
         </div>
         {isGuest && (
@@ -1437,14 +1440,18 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
           <ErrorMsg msg={error} />
           <SuccessMsg msg={msg} />
 
-          {/* 1. HERO PROFILE CARD WITH AVATAR UPLOAD */}
+          {/* 1. HERO PROFILE CARD */}
           <BentoCard className="p-6 sm:p-7 relative overflow-hidden bg-white border border-[#e8eaee] shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               {/* Left: Avatar + Details */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                {/* Avatar with Camera Overlay */}
-                <div className="relative group shrink-0 self-start sm:self-auto">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#16171a] text-white flex items-center justify-center font-black text-3xl shadow-md overflow-hidden border-2 border-white ring-2 ring-[#e8eaee]">
+                {/* Avatar (Clickable to upload photo, no camera badge) */}
+                <div className="relative shrink-0 self-start sm:self-auto">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#16171a] text-white flex items-center justify-center font-black text-3xl shadow-md overflow-hidden border-2 border-white ring-2 ring-[#e8eaee] cursor-pointer hover:opacity-90 transition"
+                    title="Click to change photo"
+                  >
                     {userAvatar ? (
                       <img
                         src={userAvatar}
@@ -1464,30 +1471,16 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                     className="hidden"
                     onChange={handlePhotoSelect}
                   />
-
-                  {/* Camera Upload Floating Badge */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={photoUploading}
-                    className="absolute -bottom-1.5 -right-1.5 p-2 rounded-2xl bg-[#d2f84b] text-[#16171a] shadow-md hover:scale-110 active:scale-95 transition cursor-pointer border border-[#16171a]/10"
-                    title="Upload profile photo"
-                  >
-                    {photoUploading ? <Spinner size="sm" /> : <IconCamera className="w-4 h-4" />}
-                  </button>
                 </div>
 
                 {/* Identity Information */}
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h2 className="text-2xl font-black text-[#111214] tracking-tight">{displayName}</h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#d2f84b]/30 text-[#2e5200]">
-                      {isGuest ? "Guest Researcher" : "Verified Member"}
-                    </span>
                     <button
                       onClick={() => { setIsEditing(!isEditing); setError(""); setMsg(""); }}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#5f6672] hover:text-[#111214] bg-[#f4f5f7] hover:bg-[#e8eaee] transition flex items-center gap-1 cursor-pointer border border-[#e8eaee]"
-                      title="Edit Profile Information"
+                      title="Edit Name"
                     >
                       <IconEdit />
                       <span>{isEditing ? "Close" : "Edit Details"}</span>
@@ -1495,17 +1488,11 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                   </div>
 
                   <p className="text-xs font-semibold text-[#5f6672]">
-                    {profile?.role || "Perspective Researcher"} · <span className="font-mono text-[#111214]">{isGuest ? "Local Session" : (profile?.email || user?.email || "No email")}</span>
+                    <span className="font-mono text-[#111214]">{isGuest ? "Local Session" : (profile?.email || user?.email || "No email")}</span>
                   </p>
 
-                  <p className="text-xs text-[#8c9099] max-w-md leading-relaxed font-medium">
-                    {profile?.bio || "Researching linguistic nuance, loaded framing, and viewpoint balance."}
-                  </p>
-
-                  <div className="flex items-center gap-3 pt-1 text-[11px] font-semibold text-[#8c9099]">
-                    <span>📅 Joined {profile?.date_joined || "Nov 2026"}</span>
-                    <span>•</span>
-                    <span className="text-[#16171a] font-bold">{totalAnalyses} Analyses Logged</span>
+                  <div className="pt-0.5 text-xs font-bold text-[#8c9099]">
+                    <span>Total analyses logged: <span className="text-[#111214] font-black">{totalAnalyses}</span></span>
                   </div>
                 </div>
               </div>
@@ -1549,7 +1536,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
           {isEditing && (
             <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md bg-white">
               <div className="flex items-center justify-between pb-2 border-b border-[#f0f2f5]">
-                <h3 className="text-base font-extrabold text-[#111214]">Edit Profile Persona</h3>
+                <h3 className="text-base font-extrabold text-[#111214]">Edit Details</h3>
                 <button
                   onClick={() => setIsEditing(false)}
                   className="text-xs font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
@@ -1559,44 +1546,18 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
               </div>
 
               <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                      Username / Handle
-                    </label>
-                    <input
-                      type="text"
-                      value={editUsername}
-                      onChange={(e) => setEditUsername(e.target.value)}
-                      placeholder="e.g. alex_rivera"
-                      required
-                      className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                      Specialization / Title
-                    </label>
-                    <input
-                      type="text"
-                      value={editRole}
-                      onChange={(e) => setEditRole(e.target.value)}
-                      placeholder="e.g. Senior Editor, Lead Researcher"
-                      className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                    Bio / Researcher Profile
+                    Full Name
                   </label>
-                  <textarea
-                    rows={2}
-                    value={editBio}
-                    onChange={(e) => setEditBio(e.target.value)}
-                    placeholder="Brief description of what you analyze or write..."
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-medium text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    placeholder="Enter your name"
+                    required
+                    autoFocus
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
                   />
                 </div>
 
@@ -1606,7 +1567,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                     disabled={saving}
                     className="px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 cursor-pointer"
                   >
-                    {saving ? "Saving…" : "Save Persona"}
+                    {saving ? "Saving…" : "Save Name"}
                   </button>
                   <button
                     type="button"
