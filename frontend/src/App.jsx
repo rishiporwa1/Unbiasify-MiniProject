@@ -751,7 +751,7 @@ function ResultsPage({ resultState, setPage }) {
   };
 
   return (
-    <div className="flex flex-col justify-between space-y-6 min-h-full">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <button
@@ -969,7 +969,7 @@ function DashboardPage({ user }) {
   const catTotals = data.category_totals || {};
 
   return (
-    <div className="flex flex-col justify-between space-y-6 min-h-full">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -1145,7 +1145,7 @@ function HistoryPage({ setPage, setResultState, onNotify, user }) {
   const filtered = activeList.filter(i => !search || i.text?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="flex flex-col justify-between space-y-6 min-h-full">
+    <div className="space-y-6">
       {/* Header with Search and Clear History button for Recent */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -1664,7 +1664,7 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const totalAnalyses = profile?.total_analyses || 0;
 
   return (
-    <div className="flex flex-col justify-between space-y-6 max-w-4xl min-h-full">
+    <div className="space-y-6 max-w-4xl pb-8">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
