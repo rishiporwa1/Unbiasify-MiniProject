@@ -12,7 +12,7 @@ from django.core.mail import send_mail
 from django.conf import settings as django_settings
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Count
+from django.db.models import Count, Q, Avg
 from collections import defaultdict
 import json
 
@@ -390,19 +390,22 @@ def history(request):
 def profile(request):
     user = request.user if (request.user and request.user.is_authenticated) else None
     if user:
-        total = TextAnalysis.objects.filter(user=user).count()
-        positive = TextAnalysis.objects.filter(user=user, sentiment='Positive').count()
-        negative = TextAnalysis.objects.filter(user=user, sentiment='Negative').count()
-        neutral = TextAnalysis.objects.filter(user=user, sentiment='Neutral').count()
+        # Single database aggregation query instead of 4 sequential queries
+        counts = TextAnalysis.objects.filter(user=user).aggregate(
+            total=Count('id'),
+            positive=Count('id', filter=Q(sentiment__iexact='Positive')),
+            negative=Count('id', filter=Q(sentiment__iexact='Negative')),
+            neutral=Count('id', filter=Q(sentiment__iexact='Neutral')),
+        )
         display_name = user.first_name if (user.username.startswith('user_') and user.first_name) else user.username
         return Response({
             'username': display_name,
             'email': user.email,
             'date_joined': user.date_joined.strftime('%d %b %Y'),
-            'total_analyses': total,
-            'positive': positive,
-            'negative': negative,
-            'neutral': neutral,
+            'total_analyses': counts['total'] or 0,
+            'positive': counts['positive'] or 0,
+            'negative': counts['negative'] or 0,
+            'neutral': counts['neutral'] or 0,
         })
     else:
         return Response({
@@ -517,26 +520,56 @@ def dashboard(request):
     """
     GET /api/dashboard/
     Returns analytics metrics for the authenticated user or aggregate benchmarks for guest sessions.
+    Optimized with single aggregation query and lean field projections.
     """
     user = request.user if (request.user and request.user.is_authenticated) else None
     now = timezone.now()
     thirty_days_ago = now - timedelta(days=30)
+    seven_days_ago = now - timedelta(days=7)
+    fourteen_days_ago = now - timedelta(days=14)
 
-    if user:
-        all_analyses = TextAnalysis.objects.filter(user=user)
-    else:
-        all_analyses = TextAnalysis.objects.all()
+    all_analyses = TextAnalysis.objects.filter(user=user) if user else TextAnalysis.objects.all()
 
-    total_analyses = all_analyses.count()
+    # 1. Single aggregation query across counts, averages, and trend buckets
+    agg = all_analyses.aggregate(
+        total=Count('id'),
+        positive=Count('id', filter=Q(sentiment__iexact='Positive')),
+        negative=Count('id', filter=Q(sentiment__iexact='Negative')),
+        neutral=Count('id', filter=Q(sentiment__iexact='Neutral')),
+        avg_polarity=Avg('polarity'),
+        last_7=Count('id', filter=Q(created_at__gte=seven_days_ago)),
+        prior_7=Count('id', filter=Q(created_at__gte=fourteen_days_ago, created_at__lt=seven_days_ago)),
+    )
 
-    # Last 30-day analyses
-    recent = all_analyses.filter(created_at__gte=thirty_days_ago).order_by('created_at')
+    total_analyses = agg['total'] or 0
+    positive_count = agg['positive'] or 0
+    negative_count = agg['negative'] or 0
+    neutral_count = agg['neutral'] or 0
+    avg_pol = agg['avg_polarity']
+    avg_polarity = round(float(avg_pol), 3) if avg_pol is not None else 0.0
 
-    # Daily counts
+    # 2. Lean projection of recent analyses (only created_at and findings, omit heavy text)
+    recent_rows = list(
+        all_analyses.filter(created_at__gte=thirty_days_ago)
+        .values('created_at', 'findings')
+        .order_by('created_at')[:200]
+    )
+
     daily = defaultdict(int)
-    for a in recent:
-        day_str = a.created_at.strftime('%Y-%m-%d')
+    category_totals = defaultdict(int)
+    day_set = set()
+
+    for row in recent_rows:
+        dt = row['created_at']
+        day_str = dt.strftime('%Y-%m-%d')
         daily[day_str] += 1
+        day_set.add(dt.date())
+
+        findings_data = row.get('findings')
+        if isinstance(findings_data, dict):
+            for f in findings_data.get('findings', []):
+                cat = f.get('category', 'unknown')
+                category_totals[cat] += 1
 
     daily_counts_list = []
     for i in range(30):
@@ -546,49 +579,20 @@ def dashboard(request):
             'count': daily.get(day, 0)
         })
 
-    # Sentiment distribution
-    positive_count = all_analyses.filter(sentiment__iexact='Positive').count()
-    negative_count = all_analyses.filter(sentiment__iexact='Negative').count()
-    neutral_count = all_analyses.filter(sentiment__iexact='Neutral').count()
-
-    # Average polarity
-    from django.db.models import Avg
-    avg_pol = all_analyses.aggregate(Avg('polarity'))['polarity__avg']
-    avg_polarity = round(float(avg_pol), 3) if avg_pol is not None else 0.0
-
-    # Calculate streak (consecutive days with at least 1 analysis)
+    # Streak calculation
     streak = 0
-    if user:
+    if user and day_set:
         check_day = now.date()
-        day_analyses = set(all_analyses.values_list('created_at__date', flat=True))
-        if check_day in day_analyses or (check_day - timedelta(days=1)) in day_analyses:
-            current = check_day if check_day in day_analyses else (check_day - timedelta(days=1))
-            while current in day_analyses:
+        if check_day in day_set or (check_day - timedelta(days=1)) in day_set:
+            current = check_day if check_day in day_set else (check_day - timedelta(days=1))
+            while current in day_set:
                 streak += 1
                 current = current - timedelta(days=1)
-    else:
+    elif not user:
         streak = 1
 
-    # Category totals across analyses
-    category_totals = defaultdict(int)
-    for a in all_analyses[:200]:
-        findings_data = a.findings
-        if isinstance(findings_data, dict):
-            findings_list = findings_data.get('findings', [])
-            for f in findings_list:
-                cat = f.get('category', 'unknown')
-                category_totals[cat] += 1
-
-    # Trend: last 7 days vs prior 7 days
-    seven_days_ago = now - timedelta(days=7)
-    fourteen_days_ago = now - timedelta(days=14)
-
-    last_7 = all_analyses.filter(created_at__gte=seven_days_ago).count()
-    prior_7 = all_analyses.filter(
-        created_at__gte=fourteen_days_ago,
-        created_at__lt=seven_days_ago,
-    ).count()
-
+    last_7 = agg['last_7'] or 0
+    prior_7 = agg['prior_7'] or 0
     trend_pct = None
     if prior_7 > 0:
         trend_pct = round(((last_7 - prior_7) / prior_7) * 100, 1)

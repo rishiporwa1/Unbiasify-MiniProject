@@ -11,6 +11,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Module-level caches for instant sub-millisecond tab switching
+let cachedDashboardData = null;
+let lastDashboardFetch = 0;
+let cachedProfileData = null;
+let lastProfileFetch = 0;
+
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
 
 function cn(...classes) {
@@ -405,6 +411,10 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
     setLoading(true);
     try {
       const res = await api.post("/analyze/", { text, context, save: saveToHistory });
+      if (saveToHistory) {
+        cachedDashboardData = null;
+        cachedProfileData = null;
+      }
       const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
       const score = Math.round(res.data.bias_score ?? res.data.footprint ?? 0);
       onNotify?.("Analysis Completed", `Analyzed ${wordCount} words · Bias score: ${score}/100.`);
@@ -844,33 +854,41 @@ function ResultsPage({ resultState, setPage }) {
 // ─── DASHBOARD PAGE ───────────────────────────────────────────────────────────
 
 function DashboardPage({ user }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => cachedDashboardData);
+  const [loading, setLoading] = useState(() => !cachedDashboardData);
   const [tooltip, setTooltip] = useState(null);
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await api.get("/dashboard/");
-        setData(res.data);
-      } catch (err) {
-        setData({
-          is_guest: true,
-          total_analyses: 5,
-          positive_count: 2,
-          negative_count: 1,
-          neutral_count: 2,
-          avg_polarity: 0.1,
-          streak: 1,
-          daily_counts: [],
-          category_totals: { loaded_language: 2, unsupported_generalization: 1, stereotyping: 1, one_sided_framing: 0 },
-        });
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    const isStale = Date.now() - lastDashboardFetch > 45000;
+    if (!cachedDashboardData) setLoading(true);
+
+    if (isStale || !cachedDashboardData) {
+      (async () => {
+        try {
+          const res = await api.get("/dashboard/");
+          cachedDashboardData = res.data;
+          lastDashboardFetch = Date.now();
+          setData(res.data);
+        } catch (err) {
+          if (!cachedDashboardData) {
+            setData({
+              is_guest: true,
+              total_analyses: 5,
+              positive_count: 2,
+              negative_count: 1,
+              neutral_count: 2,
+              avg_polarity: 0.1,
+              streak: 1,
+              daily_counts: [],
+              category_totals: { loaded_language: 2, unsupported_generalization: 1, stereotyping: 1, one_sided_framing: 0 },
+            });
+          }
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [user]);
 
   if (loading) return <div className="flex justify-center py-20"><Spinner /></div>;
   if (!data) return null;
@@ -1080,10 +1098,10 @@ function HistoryPage({ setPage, setResultState, onNotify }) {
 // ─── PROFILE PAGE (FUNCTIONAL USERNAME & PASSWORD CHANGE) ────────────────
 
 function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(Boolean(user));
+  const [profile, setProfile] = useState(() => cachedProfileData);
+  const [loading, setLoading] = useState(() => Boolean(user) && !cachedProfileData);
   const [isEditing, setIsEditing] = useState(false);
-  const [editUsername, setEditUsername] = useState("");
+  const [editUsername, setEditUsername] = useState(() => cachedProfileData?.username || user?.username || "");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
@@ -1112,22 +1130,32 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
       return;
     }
 
-    (async () => {
-      try {
-        const res = await api.get("/profile/");
-        setProfile(res.data);
-        setEditUsername(res.data.username || user?.username || "");
-      } catch {
-        setProfile({
-          username: user?.username || "Guest User",
-          email: user?.email || "guest@unbiasify.local",
-          total_analyses: 0,
-        });
-        setEditUsername(user?.username || "Guest User");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    const isStale = Date.now() - lastProfileFetch > 45000;
+    if (isStale || !cachedProfileData) {
+      (async () => {
+        try {
+          const res = await api.get("/profile/");
+          cachedProfileData = res.data;
+          lastProfileFetch = Date.now();
+          setProfile(res.data);
+          setEditUsername(res.data.username || user?.username || "");
+        } catch {
+          if (!cachedProfileData) {
+            setProfile({
+              username: user?.username || "Guest User",
+              email: user?.email || "guest@unbiasify.local",
+              total_analyses: 0,
+            });
+            setEditUsername(user?.username || "Guest User");
+          }
+        } finally {
+          setLoading(false);
+        }
+      })();
+    } else {
+      setEditUsername(cachedProfileData.username || user?.username || "");
+      setLoading(false);
+    }
   }, [user, isGuest]);
 
   const handleSaveUsername = async (e) => {
@@ -2418,8 +2446,17 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
 // ─── ROOT APP COMPONENT ──────────────────────────────────────────────────
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [checking, setChecking] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cached_user");
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  });
+  const [checking, setChecking] = useState(() => {
+    const token = localStorage.getItem("access");
+    const cached = localStorage.getItem("cached_user");
+    return Boolean(token && !cached);
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("access");
@@ -2430,11 +2467,18 @@ export default function App() {
     (async () => {
       try {
         const res = await api.get("/profile/");
-        setUser({ username: res.data.username, email: res.data.email });
-      } catch {
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
-        setUser(null);
+        const userData = { username: res.data.username, email: res.data.email };
+        cachedProfileData = res.data;
+        lastProfileFetch = Date.now();
+        localStorage.setItem("cached_user", JSON.stringify(userData));
+        setUser(userData);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("access");
+          localStorage.removeItem("refresh");
+          localStorage.removeItem("cached_user");
+          setUser(null);
+        }
       } finally {
         setChecking(false);
       }
@@ -2443,17 +2487,30 @@ export default function App() {
 
   const handleProfileUpdate = (u) => {
     if (u.username) {
-      setUser((prev) => (prev ? { ...prev, username: u.username } : null));
+      setUser((prev) => {
+        const next = prev ? { ...prev, username: u.username } : null;
+        if (next) localStorage.setItem("cached_user", JSON.stringify(next));
+        return next;
+      });
+      if (cachedProfileData) {
+        cachedProfileData = { ...cachedProfileData, username: u.username };
+      }
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
+    localStorage.removeItem("cached_user");
+    cachedProfileData = null;
+    cachedDashboardData = null;
     setUser(null);
   };
 
   const handleLogin = (u) => {
+    localStorage.setItem("cached_user", JSON.stringify(u));
+    cachedProfileData = null;
+    cachedDashboardData = null;
     setUser(u);
   };
 
