@@ -1153,8 +1153,26 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const [pwdMsg, setPwdMsg] = useState("");
   const [pwdError, setPwdError] = useState("");
 
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const avatarMenuRef = useRef(null);
   const fileInputRef = useRef(null);
   const isGuest = !user;
+
+  useEffect(() => {
+    if (!showAvatarMenu) return;
+    const handleClickOutside = (e) => {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
+        setShowAvatarMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showAvatarMenu]);
 
   useEffect(() => {
     if (isGuest) {
@@ -1503,12 +1521,18 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               {/* Left: Avatar + Details */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                {/* Avatar (Clickable to upload photo, no camera badge) */}
-                <div className="relative shrink-0 self-start sm:self-auto">
+                {/* Avatar (Clickable with 2 options: View and Change) */}
+                <div ref={avatarMenuRef} className="relative shrink-0 self-start sm:self-auto">
                   <div
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      if (userAvatar) {
+                        setShowAvatarMenu((prev) => !prev);
+                      } else {
+                        fileInputRef.current?.click();
+                      }
+                    }}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#16171a] text-white flex items-center justify-center font-black text-3xl shadow-md overflow-hidden border-2 border-white ring-2 ring-[#e8eaee] cursor-pointer hover:opacity-90 transition"
-                    title="Click to change photo"
+                    title={userAvatar ? "Click to view or change photo" : "Click to upload photo"}
                   >
                     {userAvatar ? (
                       <img
@@ -1520,6 +1544,34 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                       <span>{displayName[0]?.toUpperCase() || "U"}</span>
                     )}
                   </div>
+
+                  {/* Dropdown Options: View Photo & Change Photo */}
+                  {showAvatarMenu && userAvatar && (
+                    <div className="absolute left-0 top-full mt-2 w-44 bg-white rounded-2xl shadow-xl border border-[#e8eaee] p-1.5 z-50">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAvatarMenu(false);
+                          setShowPhotoModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-[#111214] hover:bg-[#f4f5f7] flex items-center gap-2 transition cursor-pointer"
+                      >
+                        <IconEye className="w-3.5 h-3.5 text-[#5f6672]" />
+                        <span>View Photo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAvatarMenu(false);
+                          fileInputRef.current?.click();
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-[#111214] hover:bg-[#f4f5f7] flex items-center gap-2 transition cursor-pointer"
+                      >
+                        <IconCamera className="w-3.5 h-3.5 text-[#5f6672]" />
+                        <span>Change Photo</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Hidden File Input */}
                   <input
@@ -1570,6 +1622,17 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
 
               {/* Right: Actions */}
               <div className="flex flex-wrap md:flex-col items-stretch gap-2 shrink-0">
+                {userAvatar && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoModal(true)}
+                    className="px-4 py-2 rounded-xl bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#16171a] text-xs font-bold border border-[#e8eaee] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <IconEye className="w-3.5 h-3.5 text-[#5f6672]" />
+                    <span>View Photo</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -1778,6 +1841,58 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
             >
               Sign Out of Account
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* PHOTO LIGHTBOX MODAL */}
+      {showPhotoModal && userAvatar && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4"
+          onClick={() => setShowPhotoModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-5 max-w-sm sm:max-w-md w-full shadow-2xl border border-[#e8eaee] relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#f0f2f5] mb-4">
+              <h3 className="text-sm font-black text-[#111214]">Profile Photo</h3>
+              <button
+                onClick={() => setShowPhotoModal(false)}
+                className="w-7 h-7 rounded-full bg-[#f4f5f7] hover:bg-[#e8eaee] flex items-center justify-center text-xs font-bold text-[#5f6672] hover:text-[#111214] cursor-pointer transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="w-full aspect-square rounded-2xl overflow-hidden bg-[#16171a] flex items-center justify-center border border-[#e8eaee]">
+              <img
+                src={userAvatar}
+                alt={displayName}
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 mt-4 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPhotoModal(false);
+                  fileInputRef.current?.click();
+                }}
+                className="px-5 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm cursor-pointer flex items-center gap-1.5"
+              >
+                <IconCamera className="w-3.5 h-3.5" />
+                <span>Change Photo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPhotoModal(false)}
+                className="px-4 py-2.5 rounded-full bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#5f6672] text-xs font-bold transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
