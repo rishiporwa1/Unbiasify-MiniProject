@@ -33,7 +33,7 @@
   }
 
   html, body, #root {
-    height: 100%;
+    min-height: 100%;
     margin: 0;
     padding: 0;
   }
@@ -42,9 +42,15 @@
     background-color: #d7ebd0;
     color: #111214;
     font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, sans-serif;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+  }
+
+  @media (min-width: 768px) {
+    body {
+      height: 100vh;
+      overflow: hidden;
+    }
   }
 
   /* Browser autofill styling */

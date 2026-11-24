@@ -121,6 +121,22 @@ function IconTrash() {
   );
 }
 
+function IconMenu({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function IconClose({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
 function IconEdit() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -523,7 +539,7 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
               <button
                 key={s}
                 onClick={() => useSample(s)}
-                className="px-3 py-1 rounded-full bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#5f6672] hover:text-[#111214] font-medium transition truncate max-w-[220px] cursor-pointer"
+                className="px-3 py-1 rounded-full bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#5f6672] hover:text-[#111214] font-medium transition truncate max-w-[160px] sm:max-w-[220px] cursor-pointer"
                 title={s}
               >
                 "{s}"
@@ -531,7 +547,7 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             {text.length > 0 && (
               <button
                 onClick={clear}
@@ -543,7 +559,7 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
             <button
               onClick={analyzeText}
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs sm:text-sm font-extrabold shadow-md transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs sm:text-sm font-extrabold shadow-md transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
             >
               {loading ? (
                 <><Spinner size="sm" /> <span>Inspecting…</span></>
@@ -715,7 +731,7 @@ function ResultsPage({ resultState, setPage }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <button
             onClick={() => setPage("home")}
@@ -723,11 +739,11 @@ function ResultsPage({ resultState, setPage }) {
           >
             ← Back to Perspective Workspace
           </button>
-          <h1 className="text-3xl font-extrabold text-[#111214]">Analysis Findings</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111214]">Analysis Findings</h1>
         </div>
         <button
           onClick={() => setPage("home")}
-          className="px-5 py-2 rounded-full bg-[#16171a] text-white text-xs font-bold hover:bg-black transition cursor-pointer"
+          className="self-start sm:self-auto px-5 py-2 rounded-full bg-[#16171a] text-white text-xs font-bold hover:bg-black transition cursor-pointer"
         >
           + New Analysis
         </button>
@@ -2498,6 +2514,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
   const [resultState, setResultState] = useState(null);
   const [resetToken, setResetToken] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const notifRef = useRef(null);
   const [notifications, setNotifications] = useState(() => {
     try {
@@ -2593,6 +2610,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
   const navigate = useCallback((p) => {
     setPage(p);
     setShowNotifications(false);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
@@ -2610,16 +2628,38 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
       ];
 
   return (
-    <div className="h-screen w-screen bg-[#d7ebd0] p-2 sm:p-3 md:p-4 lg:p-5 flex items-center justify-center font-sans antialiased text-[#111214] overflow-hidden">
+    <div className="min-h-screen md:h-screen w-full bg-[#d7ebd0] p-0 sm:p-2 md:p-4 lg:p-5 flex items-center justify-center font-sans antialiased text-[#111214] md:overflow-hidden">
       {/* Outer Rounded Container matching the Flux Template ("Cover") */}
-      <div className="w-full max-w-[1440px] h-full max-h-full bg-[#f4f5f7] rounded-[1.8rem] sm:rounded-[2.4rem] shadow-2xl border border-black/5 overflow-hidden flex flex-col md:flex-row">
-        {/* Left Dark Sidebar (#16171a) */}
-        <aside className="w-full md:w-64 bg-[#16171a] p-5 lg:p-6 flex flex-col justify-between shrink-0 text-white md:h-full overflow-y-auto">
+      <div className="w-full max-w-[1440px] min-h-screen md:min-h-0 md:h-full bg-[#f4f5f7] rounded-none sm:rounded-[1.8rem] md:rounded-[2.4rem] shadow-2xl border-0 sm:border border-black/5 overflow-hidden flex flex-col md:flex-row relative">
+        {/* Mobile Navigation Drawer Backdrop */}
+        {mobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Left Dark Sidebar (#16171a) - Desktop static, Mobile slide-out drawer */}
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-72 bg-[#16171a] p-5 flex flex-col justify-between shrink-0 text-white overflow-y-auto transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:w-64 md:p-5 lg:p-6 md:h-full md:z-auto",
+            mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+          )}
+        >
           <div>
-            {/* Brand Logo */}
-            <div className="flex items-center gap-2.5 mb-8 cursor-pointer" onClick={() => navigate("home")}>
-              <IconFluxLogo />
-              <span className="font-black text-xl tracking-tight text-white">unbiasify</span>
+            {/* Brand Logo & Close button for mobile */}
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate("home")}>
+                <IconFluxLogo />
+                <span className="font-black text-xl tracking-tight text-white">unbiasify</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="md:hidden text-[#8e929b] hover:text-white p-1 rounded-lg transition"
+                title="Close menu"
+              >
+                <IconClose className="w-5 h-5" />
+              </button>
             </div>
 
             {/* Nav Items */}
@@ -2667,46 +2707,57 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
         {/* Right Main Content Area */}
         <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#f4f5f7]">
           {/* Top Bar */}
-          <header className="px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-4 border-b border-[#e8eaee]/60 shrink-0 relative bg-[#f4f5f7] z-10">
-            {/* User Profile */}
-            <div className="flex items-center gap-3">
+          <header className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 flex items-center justify-between gap-3 border-b border-[#e8eaee]/60 shrink-0 relative bg-[#f4f5f7] z-10">
+            {/* Left: Mobile Hamburger + User Profile */}
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              {/* Mobile Menu Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className="md:hidden w-9 h-9 rounded-full bg-white border border-[#e8eaee] flex items-center justify-center text-[#111214] shadow-2xs hover:bg-[#f4f5f7] transition shrink-0 cursor-pointer"
+                title="Open menu"
+                aria-label="Open menu"
+              >
+                <IconMenu className="w-5 h-5" />
+              </button>
+
               {user?.avatar ? (
                 <img
                   src={user.avatar}
                   alt={user.first_name || user.name || user.username || "User"}
-                  className="w-9 h-9 rounded-full object-cover border border-black/10 shrink-0 cursor-pointer shadow-2xs hover:opacity-90 transition"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-black/10 shrink-0 cursor-pointer shadow-2xs hover:opacity-90 transition"
                   onClick={() => navigate("profile")}
                 />
               ) : user ? (
                 <div
-                  className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:bg-black transition"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:bg-black transition"
                   onClick={() => navigate("profile")}
                 >
                   {(user.first_name || user.name || user.username)?.[0]?.toUpperCase() || "U"}
                 </div>
               ) : (
                 <div
-                  className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:bg-black transition"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:bg-black transition"
                   onClick={() => navigate("profile")}
                 >
                   G
                 </div>
               )}
 
-              <div className="text-left">
-                <p className="text-xs font-black text-[#111214] leading-tight">
+              <div className="text-left truncate">
+                <p className="text-xs font-black text-[#111214] leading-tight truncate">
                   {user ? (user.first_name || user.name || user.username) : "Guest Researcher"}
                 </p>
-                <p className="text-[11px] font-medium text-[#8c9099] leading-tight">
-                  {user ? (user.username && (user.first_name || user.name) ? `@${user.username} · ${user.email}` : (user.username ? `@${user.username}` : user.email)) : "Guest Session Active"}
+                <p className="text-[10px] sm:text-[11px] font-medium text-[#8c9099] leading-tight truncate">
+                  {user ? (user.username ? `@${user.username}` : user.email) : "Guest Session Active"}
                 </p>
               </div>
             </div>
 
             {/* Search Pill, Notification Bell, & Auth Actions */}
-            <div className="flex items-center gap-3 relative">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {user && (
-                <div className="hidden sm:flex items-center gap-2 bg-white rounded-full py-2 px-4 shadow-2xs border border-[#e8eaee] w-64">
+                <div className="hidden lg:flex items-center gap-2 bg-white rounded-full py-2 px-4 shadow-2xs border border-[#e8eaee] w-56 xl:w-64">
                   <IconSearch />
                   <input
                     type="text"
@@ -2722,7 +2773,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
               <div ref={notifRef} className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="w-9 h-9 rounded-full bg-white border border-[#e8eaee] flex items-center justify-center relative shadow-2xs cursor-pointer hover:bg-[#f4f5f7] transition"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-[#e8eaee] flex items-center justify-center relative shadow-2xs cursor-pointer hover:bg-[#f4f5f7] transition"
                   title="Notifications"
                 >
                   <IconBell />
@@ -2733,7 +2784,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
 
                 {/* Live Dynamic Notifications Dropdown */}
                 {showNotifications && (
-                  <div className="absolute right-0 top-12 w-80 bg-white rounded-3xl shadow-xl border border-[#e8eaee] p-4 z-50">
+                  <div className="absolute right-0 top-12 w-72 sm:w-80 bg-white rounded-3xl shadow-xl border border-[#e8eaee] p-4 z-50">
                     <div className="flex items-center justify-between pb-3 border-b border-[#f0f2f5]">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-black text-[#111214]">Notifications</span>
