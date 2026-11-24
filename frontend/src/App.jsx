@@ -927,7 +927,6 @@ function DashboardPage({ user }) {
               negative_count: 1,
               neutral_count: 2,
               avg_polarity: 0.1,
-              streak: 1,
               daily_counts: [],
               category_totals: { loaded_language: 2, unsupported_generalization: 1, stereotyping: 1, one_sided_framing: 0 },
             });
@@ -956,11 +955,6 @@ function DashboardPage({ user }) {
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111214] tracking-tight">Telemetry Dashboard</h1>
           <p className="text-xs font-medium text-[#717682] mt-0.5">Aggregated perspective benchmarks and signal frequency</p>
         </div>
-        {data.streak > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#e8fab4] text-[#3e4f0a] text-xs font-black shadow-2xs">
-            <span>🔥 {data.streak} Day Streak</span>
-          </div>
-        )}
       </div>
 
       {/* Guest Notice if unauthenticated */}

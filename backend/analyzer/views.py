@@ -644,18 +644,6 @@ def dashboard(request):
             'count': daily.get(day, 0)
         })
 
-    # Streak calculation
-    streak = 0
-    if user and day_set:
-        check_day = now.date()
-        if check_day in day_set or (check_day - timedelta(days=1)) in day_set:
-            current = check_day if check_day in day_set else (check_day - timedelta(days=1))
-            while current in day_set:
-                streak += 1
-                current = current - timedelta(days=1)
-    elif not user:
-        streak = 1
-
     last_7 = agg['last_7'] or 0
     prior_7 = agg['prior_7'] or 0
     trend_pct = None
@@ -669,7 +657,6 @@ def dashboard(request):
         'negative_count': negative_count,
         'neutral_count': neutral_count,
         'avg_polarity': avg_polarity,
-        'streak': streak,
         'daily_counts': daily_counts_list,
         'category_totals': dict(category_totals),
         'trend': {
