@@ -466,6 +466,26 @@ function AnalyzePage({ user, setPage, setResultState, onNotify }) {
       }
       const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
       const score = Math.round(res.data.bias_score ?? res.data.footprint ?? 0);
+
+      // Record to Recent Session History (stored in sessionStorage for this tab/session only)
+      try {
+        const recentItem = {
+          id: res.data.id || `session_${Date.now()}`,
+          text: text,
+          sentiment: res.data.sentiment || "Neutral",
+          polarity: res.data.polarity || 0,
+          created_at: new Date().toISOString(),
+          is_saved: Boolean(saveToHistory && res.data.id),
+          findings: res.data.findings || [],
+          footprint: res.data.footprint || {},
+          tone: res.data.tone || {},
+          readability: res.data.readability || {},
+          rewrite: res.data.rewrite || "",
+        };
+        const cur = JSON.parse(sessionStorage.getItem("unbiasify_recent_history") || "[]");
+        sessionStorage.setItem("unbiasify_recent_history", JSON.stringify([recentItem, ...cur].slice(0, 50)));
+      } catch {}
+
       onNotify?.("Analysis Completed", `Analyzed ${wordCount} words · Bias score: ${score}/100.`);
       setResultState({ result: res.data, originalText: text });
       setPage("results");
@@ -1061,77 +1081,225 @@ function DashboardPage({ user }) {
   );
 }
 
-// ─── HISTORY PAGE ─────────────────────────────────────────────────────────────
+// ─── HISTORY PAGE (DUAL TAB: RECENT SESSION VS PERMANENT STORED) ────────────
 
-function HistoryPage({ setPage, setResultState, onNotify }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+function HistoryPage({ setPage, setResultState, onNotify, user }) {
+  const [tab, setTab] = useState("recent"); // "recent" | "stored"
+  const [storedItems, setStoredItems] = useState([]);
+  const [recentItems, setRecentItems] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("unbiasify_recent_history") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await api.get("/history/");
-        setItems(res.data);
-      } catch { /* silent */ }
-      finally { setLoading(false); }
-    })();
-  }, []);
+  const fetchStored = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const res = await api.get("/history/");
+      setStoredItems(res.data);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [user]);
 
-  const deleteItem = async (id) => {
+  useEffect(() => {
+    if (tab === "stored") {
+      fetchStored();
+    }
+  }, [tab, fetchStored]);
+
+  // Clear ONLY Recent History (sessionStorage)
+  const clearRecentHistory = () => {
+    if (!window.confirm("Clear all recent session analyses? Stored history in database will NOT be affected.")) return;
+    try {
+      sessionStorage.removeItem("unbiasify_recent_history");
+    } catch {}
+    setRecentItems([]);
+    onNotify?.("Recent History Cleared", "Cleared current session analyses.");
+  };
+
+  // Delete single item from Stored History (Database)
+  const deleteStoredItem = async (id) => {
     try {
       await api.delete(`/history/${id}/delete/`);
-      setItems(prev => prev.filter(i => i.id !== id));
-      onNotify?.("Archive Updated", `Deleted analysis entry #${id}.`);
+      setStoredItems(prev => prev.filter(i => i.id !== id));
+      onNotify?.("Archive Updated", `Permanently removed analysis entry #${id}.`);
     } catch { /* silent */ }
   };
 
-  const filtered = items.filter(i => !search || i.text?.toLowerCase().includes(search.toLowerCase()));
+  // Remove single item from Recent History
+  const removeRecentItem = (id) => {
+    const updated = recentItems.filter(i => i.id !== id);
+    setRecentItems(updated);
+    try {
+      sessionStorage.setItem("unbiasify_recent_history", JSON.stringify(updated));
+    } catch {}
+  };
+
+  const activeList = tab === "recent" ? recentItems : storedItems;
+  const filtered = activeList.filter(i => !search || i.text?.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6">
+      {/* Header with Search and Clear History button for Recent */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#111214]">Analysis Archive</h1>
-          <p className="text-xs font-medium text-[#717682] mt-0.5">Stored scans and sentiment logs in Supabase</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111214] tracking-tight">Analysis Archive</h1>
+          <p className="text-xs font-medium text-[#717682] mt-0.5">
+            {tab === "recent"
+              ? "Current session scans (automatically discarded when session closes)"
+              : "Permanently stored scans saved to Supabase (only deleted by you)"}
+          </p>
         </div>
-        <input
-          placeholder="Search history…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="py-2 px-4 rounded-full bg-white border border-[#e2e4e8] text-xs font-bold text-[#111214] w-64 shadow-xs"
-        />
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <input
+            placeholder="Search archive…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="py-2 px-4 rounded-full bg-white border border-[#e2e4e8] text-xs font-bold text-[#111214] w-48 sm:w-60 shadow-xs focus:outline-none focus:border-[#16171a]"
+          />
+
+          {tab === "recent" && recentItems.length > 0 && (
+            <button
+              onClick={clearRecentHistory}
+              className="px-4 py-2 rounded-full text-xs font-bold text-[#5f6672] hover:text-[#111214] bg-white hover:bg-[#f4f5f7] border border-[#e8eaee] transition cursor-pointer shadow-2xs"
+              title="Clear all analyses recorded in this session"
+            >
+              Clear Recent History
+            </button>
+          )}
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20"><Spinner /></div>
-      ) : filtered.length === 0 ? (
-        <BentoCard className="text-center py-12 text-[#8c9099] font-bold text-xs">
-          No historical analyses found.
+      {/* Tabs Switcher: Recent History vs Stored History */}
+      <div className="flex items-center gap-2 p-1 bg-[#e8eaee] rounded-2xl w-fit">
+        <button
+          onClick={() => setTab("recent")}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center gap-2",
+            tab === "recent"
+              ? "bg-[#16171a] text-white shadow-xs"
+              : "text-[#5f6672] hover:text-[#111214]"
+          )}
+        >
+          <span>Recent History</span>
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-[10px] font-black",
+            tab === "recent" ? "bg-white/20 text-white" : "bg-white text-[#16171a]"
+          )}>
+            {recentItems.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setTab("stored")}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center gap-2",
+            tab === "stored"
+              ? "bg-[#16171a] text-white shadow-xs"
+              : "text-[#5f6672] hover:text-[#111214]"
+          )}
+        >
+          <span>Stored History</span>
+          {user && (
+            <span className={cn(
+              "px-2 py-0.5 rounded-full text-[10px] font-black",
+              tab === "stored" ? "bg-white/20 text-white" : "bg-white text-[#16171a]"
+            )}>
+              {storedItems.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Guest notice for stored history tab */}
+      {tab === "stored" && !user && (
+        <BentoCard className="p-8 text-center space-y-3">
+          <p className="text-base font-black text-[#111214]">Stored History is exclusive to authenticated accounts</p>
+          <p className="text-xs text-[#5f6672] max-w-md mx-auto">
+            Analyses marked with the <strong>Save</strong> button are stored in cloud database and stay permanently. Sign in or register to view and manage stored history.
+          </p>
+          <button
+            onClick={() => setPage("login")}
+            className="px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm cursor-pointer"
+          >
+            Sign In to Access Stored History
+          </button>
         </BentoCard>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((item) => (
-            <BentoCard key={item.id} className="p-4 hover:border-black/20 transition flex items-start justify-between gap-4">
-              <div
-                className="flex-1 cursor-pointer"
-                onClick={() => {
-                  setResultState({ result: item, originalText: item.text });
-                  setPage("results");
-                }}
-              >
-                <p className="text-sm font-bold text-[#111214] line-clamp-2">{item.text}</p>
-                <div className="flex items-center gap-3 mt-2 text-xs font-bold text-[#8c9099]">
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#f4f5f7] border text-[#111214]">{item.sentiment}</span>
-                  <span>{fmtDateTime(item.created_at)}</span>
-                </div>
-              </div>
-              <button onClick={() => deleteItem(item.id)} className="p-2 text-[#8c9099] hover:text-[#111214] hover:bg-[#f4f5f7] rounded-full transition cursor-pointer" title="Delete record">
-                <IconTrash />
-              </button>
+      )}
+
+      {/* History Items Display */}
+      {(tab === "recent" || user) && (
+        <div>
+          {loading ? (
+            <div className="flex justify-center py-20"><Spinner /></div>
+          ) : filtered.length === 0 ? (
+            <BentoCard className="text-center py-12 text-[#8c9099] font-bold text-xs space-y-2">
+              <p>
+                {search
+                  ? "No matching analyses found."
+                  : tab === "recent"
+                  ? "No analyses performed in this session yet."
+                  : "No permanent analyses stored yet. Turn on the Save toggle in Workspace to keep scans."}
+              </p>
             </BentoCard>
-          ))}
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((item) => (
+                <BentoCard
+                  key={item.id}
+                  className="p-4 hover:border-black/20 transition flex items-start justify-between gap-4"
+                >
+                  <div
+                    className="flex-1 cursor-pointer"
+                    onClick={() => {
+                      setResultState({
+                        result: item.findings && !item.findings_summary ? item : { ...item, findings: item.findings || [] },
+                        originalText: item.text,
+                      });
+                      setPage("results");
+                    }}
+                  >
+                    <p className="text-sm font-bold text-[#111214] line-clamp-2">{item.text}</p>
+                    <div className="flex flex-wrap items-center gap-2.5 mt-2 text-xs font-bold text-[#8c9099]">
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#f4f5f7] border text-[#111214]">
+                        {item.sentiment}
+                      </span>
+                      <span>{item.created_at ? fmtDateTime(item.created_at) : "Recent"}</span>
+                      {tab === "recent" && item.is_saved && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#e8fab4] text-[#3e4f0a] text-[10px] font-black">
+                          ✓ Saved to Cloud
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {tab === "stored" ? (
+                    <button
+                      onClick={() => deleteStoredItem(item.id)}
+                      className="p-2 text-[#8c9099] hover:text-[#111214] hover:bg-[#f4f5f7] rounded-full transition cursor-pointer"
+                      title="Permanently delete from database"
+                    >
+                      <IconTrash />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => removeRecentItem(item.id)}
+                      className="p-2 text-[#8c9099] hover:text-[#111214] hover:bg-[#f4f5f7] rounded-full transition cursor-pointer"
+                      title="Remove from session"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </BentoCard>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2608,7 +2776,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  // Navigation items: only Analyze & Profile for guests; Dashboard & History for logged-in users
+  // Navigation items: Analyze, History & Profile for all; Dashboard for logged-in users
   const navItems = user
     ? [
         { id: "home", label: "Analyze", icon: <IconDashboard />, badge: null },
@@ -2618,6 +2786,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
       ]
     : [
         { id: "home", label: "Analyze", icon: <IconDashboard />, badge: null },
+        { id: "history", label: "History", icon: <IconHome />, badge: null },
         { id: "profile", label: "Profile", icon: <IconUsers />, badge: null },
       ];
 
@@ -2896,7 +3065,12 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
               user ? <DashboardPage user={user} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} onNotify={notify} />
             )}
             {page === "history" && (
-              user ? <HistoryPage setPage={navigate} setResultState={setResultState} onNotify={notify} /> : <AnalyzePage user={user} setPage={navigate} setResultState={setResultState} onNotify={notify} />
+              <HistoryPage
+                user={user}
+                setPage={navigate}
+                setResultState={setResultState}
+                onNotify={notify}
+              />
             )}
             {page === "profile" && (
               <ProfilePage

@@ -375,8 +375,12 @@ def analyze(request):
 
     result = analyze_text(text)
 
+    should_save = request.data.get('save', True)
+    if isinstance(should_save, str):
+        should_save = should_save.lower() in ('true', '1')
+
     analysis_id = None
-    if request.user and request.user.is_authenticated:
+    if request.user and request.user.is_authenticated and should_save:
         analysis = TextAnalysis.objects.create(
             user=request.user,
             text=text,
