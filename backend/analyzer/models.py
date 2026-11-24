@@ -51,3 +51,15 @@ class AnalysisFeedback(models.Model):
             f"Feedback on analysis {self.analysis_id} "
             f"finding #{self.finding_index}: {self.feedback_type}"
         )
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    avatar = models.TextField(blank=True, default='')
+    bio = models.CharField(max_length=255, blank=True, default='')
+    role = models.CharField(max_length=50, blank=True, default='Perspective Researcher')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"

@@ -146,6 +146,39 @@ function IconEyeOff({ className = "w-4 h-4" }) {
   );
 }
 
+function IconCamera({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function IconDownload({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  );
+}
+
+function IconCheck({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function IconShield({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  );
+}
+
 function PasswordInput({
   value,
   onChange,
@@ -1102,7 +1135,10 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const [loading, setLoading] = useState(() => Boolean(user) && !cachedProfileData);
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(() => cachedProfileData?.username || user?.username || "");
+  const [editBio, setEditBio] = useState(() => cachedProfileData?.bio || "");
+  const [editRole, setEditRole] = useState(() => cachedProfileData?.role || "Perspective Researcher");
   const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
 
@@ -1115,17 +1151,33 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const [pwdMsg, setPwdMsg] = useState("");
   const [pwdError, setPwdError] = useState("");
 
+  // Default Context Preference
+  const [defaultContext, setDefaultContext] = useState(() => {
+    return localStorage.getItem("default_analysis_context") || "general";
+  });
+
+  const fileInputRef = useRef(null);
   const isGuest = !user;
 
   useEffect(() => {
     if (isGuest) {
       const guestName = localStorage.getItem("guest_username") || "Guest User";
+      const guestAvatar = localStorage.getItem("guest_avatar") || "";
+      const guestBio = localStorage.getItem("guest_bio") || "Guest Researcher · Analyses stored in local session.";
       setProfile({
         username: guestName,
         email: "guest@unbiasify.local",
+        avatar: guestAvatar,
+        bio: guestBio,
+        role: "Guest Researcher",
+        date_joined: "Session Active",
         total_analyses: 0,
+        positive: 0,
+        negative: 0,
+        neutral: 0,
       });
       setEditUsername(guestName);
+      setEditBio(guestBio);
       setLoading(false);
       return;
     }
@@ -1139,12 +1191,21 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
           lastProfileFetch = Date.now();
           setProfile(res.data);
           setEditUsername(res.data.username || user?.username || "");
+          setEditBio(res.data.bio || "");
+          setEditRole(res.data.role || "Perspective Researcher");
         } catch {
           if (!cachedProfileData) {
             setProfile({
               username: user?.username || "Guest User",
               email: user?.email || "guest@unbiasify.local",
+              avatar: "",
+              bio: "",
+              role: "Perspective Researcher",
+              date_joined: "Nov 2026",
               total_analyses: 0,
+              positive: 0,
+              negative: 0,
+              neutral: 0,
             });
             setEditUsername(user?.username || "Guest User");
           }
@@ -1154,16 +1215,105 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
       })();
     } else {
       setEditUsername(cachedProfileData.username || user?.username || "");
+      setEditBio(cachedProfileData.bio || "");
+      setEditRole(cachedProfileData.role || "Perspective Researcher");
       setLoading(false);
     }
   }, [user, isGuest]);
 
-  const handleSaveUsername = async (e) => {
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file (PNG, JPG, WebP).");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setError("Image must be smaller than 8MB.");
+      return;
+    }
+
+    setPhotoUploading(true);
+    setError("");
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 360;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+        try {
+          if (!isGuest) {
+            await api.patch("/profile/edit/", { avatar: dataUrl });
+          } else {
+            localStorage.setItem("guest_avatar", dataUrl);
+          }
+          setProfile((prev) => ({ ...prev, avatar: dataUrl }));
+          onProfileUpdate({ avatar: dataUrl });
+          onNotify?.("Avatar Updated", "Your profile photo has been updated.");
+          setMsg("Profile photo updated successfully!");
+          setTimeout(() => setMsg(""), 3000);
+        } catch (err) {
+          setError(err.response?.data?.error || "Failed to update profile photo.");
+        } finally {
+          setPhotoUploading(false);
+        }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!window.confirm("Remove profile photo?")) return;
+    setPhotoUploading(true);
+    try {
+      if (!isGuest) {
+        await api.patch("/profile/edit/", { avatar: "" });
+      } else {
+        localStorage.removeItem("guest_avatar");
+      }
+      setProfile((prev) => ({ ...prev, avatar: "" }));
+      onProfileUpdate({ avatar: "" });
+      onNotify?.("Avatar Removed", "Profile picture removed.");
+      setMsg("Photo removed.");
+      setTimeout(() => setMsg(""), 3000);
+    } catch {
+      setError("Failed to remove avatar.");
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setError("");
     setMsg("");
-    const trimmed = editUsername.trim();
-    if (!trimmed) {
+    const trimmedUser = editUsername.trim();
+    if (!trimmedUser) {
       setError("Username cannot be empty.");
       return;
     }
@@ -1171,21 +1321,32 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     setSaving(true);
     try {
       if (!isGuest) {
-        const res = await api.patch("/profile/edit/", { username: trimmed });
-        const updatedName = res.data.username || trimmed;
-        setProfile((prev) => ({ ...prev, username: updatedName }));
-        onProfileUpdate({ username: updatedName });
-        onNotify?.("Profile Updated", `Username updated to "${updatedName}".`);
+        const res = await api.patch("/profile/edit/", {
+          username: trimmedUser,
+          bio: editBio.trim(),
+          role: editRole.trim(),
+        });
+        const updatedName = res.data.username || trimmedUser;
+        setProfile((prev) => ({
+          ...prev,
+          username: updatedName,
+          bio: res.data.bio,
+          role: res.data.role,
+        }));
+        onProfileUpdate({ username: updatedName, bio: res.data.bio, role: res.data.role });
+        onNotify?.("Profile Updated", "Profile details updated successfully.");
       } else {
-        localStorage.setItem("guest_username", trimmed);
-        setProfile((prev) => ({ ...prev, username: trimmed }));
-        onProfileUpdate({ username: trimmed });
-        onNotify?.("Profile Updated", `Guest username updated to "${trimmed}".`);
+        localStorage.setItem("guest_username", trimmedUser);
+        localStorage.setItem("guest_bio", editBio.trim());
+        setProfile((prev) => ({ ...prev, username: trimmedUser, bio: editBio.trim() }));
+        onProfileUpdate({ username: trimmedUser, bio: editBio.trim() });
+        onNotify?.("Profile Updated", `Guest profile updated to "${trimmedUser}".`);
       }
-      setMsg("Username updated successfully!");
+      setMsg("Profile saved successfully!");
       setIsEditing(false);
+      setTimeout(() => setMsg(""), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to update username.");
+      setError(err.response?.data?.error || "Failed to update profile.");
     } finally {
       setSaving(false);
     }
@@ -1231,6 +1392,28 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     }
   };
 
+  const handleExportData = async () => {
+    try {
+      const res = await api.get("/history/");
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.data, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `unbiasify-analyses-${new Date().toISOString().split("T")[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      onNotify?.("Data Exported", "Your analyses history has been exported as JSON.");
+    } catch {
+      alert("No analyses history found to export.");
+    }
+  };
+
+  const handleContextChange = (ctx) => {
+    setDefaultContext(ctx);
+    localStorage.setItem("default_analysis_context", ctx);
+    onNotify?.("Preference Saved", `Default context set to #${ctx}`);
+  };
+
   const handleDeleteAccount = async () => {
     if (!window.confirm("Are you sure you want to permanently delete your Unbiasify account? This will erase all your profile data and saved bias analyses from the database.")) {
       return;
@@ -1246,26 +1429,33 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   };
 
   const displayName = profile?.username || (isGuest ? "Guest User" : user?.username || "User");
+  const userAvatar = profile?.avatar || user?.avatar || "";
+  const totalAnalyses = profile?.total_analyses || 0;
+  const neutralCount = profile?.neutral || 0;
+  const positiveCount = profile?.positive || 0;
+  const negativeCount = profile?.negative || 0;
+  const neutralRatio = totalAnalyses > 0 ? Math.round((neutralCount / totalAnalyses) * 100) : 100;
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-4xl pb-8">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#111214]">
-            {isGuest ? "Guest Profile" : "Account Settings"}
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111214] tracking-tight">
+            Account & Persona
           </h1>
           <p className="text-xs font-medium text-[#717682] mt-1">
             {isGuest
-              ? "You are currently running in guest mode. Analyses are stored in this browser session only."
-              : "Manage your Unbiasify identity, credentials, and profile details."}
+              ? "Running in sandbox guest mode. Upload a local photo or sign in for persistent cloud sync."
+              : "Manage your Unbiasify persona, profile picture, credentials, and telemetry preferences."}
           </p>
         </div>
         {isGuest && (
           <button
             onClick={() => setPage("login")}
-            className="px-5 py-2 rounded-full bg-[#16171a] text-white text-xs font-bold hover:bg-black transition cursor-pointer"
+            className="px-5 py-2.5 rounded-full bg-[#16171a] text-white text-xs font-bold hover:bg-black transition cursor-pointer self-start sm:self-auto shadow-sm"
           >
-            Sign In to Sync
+            Sign In to Sync Cloud
           </button>
         )}
       </div>
@@ -1273,59 +1463,124 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
       {loading ? (
         <div className="flex justify-center py-20"><Spinner /></div>
       ) : (
-        <div className="space-y-6">
-          {/* User Overview Card */}
-          <BentoCard className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#16171a] text-white flex items-center justify-center font-black text-2xl">
-                  {isGuest ? "G" : displayName[0]?.toUpperCase() || "U"}
+        <div className="space-y-5">
+          {/* Status Messages */}
+          <ErrorMsg msg={error} />
+          <SuccessMsg msg={msg} />
+
+          {/* 1. HERO PROFILE CARD WITH AVATAR UPLOAD */}
+          <BentoCard className="p-6 sm:p-7 relative overflow-hidden bg-white border border-[#e8eaee] shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              {/* Left: Avatar + Details */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                {/* Avatar with Camera Overlay */}
+                <div className="relative group shrink-0 self-start sm:self-auto">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#16171a] text-white flex items-center justify-center font-black text-3xl shadow-md overflow-hidden border-2 border-white ring-2 ring-[#e8eaee]">
+                    {userAvatar ? (
+                      <img
+                        src={userAvatar}
+                        alt={displayName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{displayName[0]?.toUpperCase() || "U"}</span>
+                    )}
+                  </div>
+
+                  {/* Hidden File Input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+
+                  {/* Camera Upload Floating Badge */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={photoUploading}
+                    className="absolute -bottom-1.5 -right-1.5 p-2 rounded-2xl bg-[#d2f84b] text-[#16171a] shadow-md hover:scale-110 active:scale-95 transition cursor-pointer border border-[#16171a]/10"
+                    title="Upload profile photo"
+                  >
+                    {photoUploading ? <Spinner size="sm" /> : <IconCamera className="w-4 h-4" />}
+                  </button>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <p className="text-xl font-black text-[#111214]">{displayName}</p>
+
+                {/* Identity Information */}
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-2xl font-black text-[#111214] tracking-tight">{displayName}</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#d2f84b]/30 text-[#2e5200]">
+                      {isGuest ? "Guest Researcher" : "Verified Member"}
+                    </span>
                     <button
                       onClick={() => { setIsEditing(!isEditing); setError(""); setMsg(""); }}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#5f6672] hover:text-[#111214] bg-[#f4f5f7] hover:bg-[#e8eaee] transition flex items-center gap-1 cursor-pointer border border-[#e8eaee]"
-                      title="Edit username"
+                      title="Edit Profile Information"
                     >
                       <IconEdit />
-                      <span>{isEditing ? "Close" : "Edit"}</span>
+                      <span>{isEditing ? "Close" : "Edit Details"}</span>
                     </button>
                   </div>
-                  <p className="text-xs font-bold text-[#8c9099] mt-0.5">
-                    {isGuest ? "Guest Session Active" : (profile?.email || user?.email || "No email")}
+
+                  <p className="text-xs font-semibold text-[#5f6672]">
+                    {profile?.role || "Perspective Researcher"} · <span className="font-mono text-[#111214]">{isGuest ? "Local Session" : (profile?.email || user?.email || "No email")}</span>
                   </p>
+
+                  <p className="text-xs text-[#8c9099] max-w-md leading-relaxed font-medium">
+                    {profile?.bio || "Researching linguistic nuance, loaded framing, and viewpoint balance."}
+                  </p>
+
+                  <div className="flex items-center gap-3 pt-1 text-[11px] font-semibold text-[#8c9099]">
+                    <span>📅 Joined {profile?.date_joined || "Nov 2026"}</span>
+                    <span>•</span>
+                    <span className="text-[#16171a] font-bold">{totalAnalyses} Analyses Logged</span>
+                  </div>
                 </div>
               </div>
 
-              {isGuest ? (
-                <span className="text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#d2f84b]/30 text-[#2e5200]">
-                  Guest User
-                </span>
-              ) : (
+              {/* Right: Actions */}
+              <div className="flex flex-wrap md:flex-col items-stretch gap-2 shrink-0">
                 <button
-                  onClick={() => { setIsChangingPwd(!isChangingPwd); setPwdError(""); setPwdMsg(""); }}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#16171a] border border-[#e8eaee] transition cursor-pointer"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 rounded-xl bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#16171a] text-xs font-bold border border-[#e8eaee] transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  {isChangingPwd ? "Close Password Form" : "Change Password"}
+                  <IconCamera className="w-3.5 h-3.5" />
+                  <span>{userAvatar ? "Change Photo" : "Upload Photo"}</span>
                 </button>
-              )}
-            </div>
 
-            <div className="pt-4 border-t border-[#f0f2f5] flex justify-between items-center text-xs">
-              <span className="font-bold text-[#8c9099]">Total analyses logged:</span>
-              <span className="font-black text-[#111214]">
-                {isGuest ? "Session only (Sign in to save)" : (profile?.total_analyses || 0)}
-              </span>
+                {userAvatar && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                  >
+                    Remove Photo
+                  </button>
+                )}
+
+                {!isGuest && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsChangingPwd(!isChangingPwd); setPwdError(""); setPwdMsg(""); }}
+                    className="px-4 py-2 rounded-xl bg-[#16171a] hover:bg-black text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <IconShield className="w-3.5 h-3.5" />
+                    <span>{isChangingPwd ? "Close Form" : "Password & Security"}</span>
+                  </button>
+                )}
+              </div>
             </div>
           </BentoCard>
 
-          {/* Edit Username Card */}
+          {/* 2. INLINE PROFILE EDIT FORM */}
           {isEditing && (
-            <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-extrabold text-[#111214]">Change Username</h3>
+            <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md bg-white">
+              <div className="flex items-center justify-between pb-2 border-b border-[#f0f2f5]">
+                <h3 className="text-base font-extrabold text-[#111214]">Edit Profile Persona</h3>
                 <button
                   onClick={() => setIsEditing(false)}
                   className="text-xs font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
@@ -1333,35 +1588,56 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                   ✕
                 </button>
               </div>
-              <p className="text-xs text-[#5f6672] font-medium">
-                Update how your name appears across Unbiasify workspace and analyses.
-              </p>
 
-              <form onSubmit={handleSaveUsername} className="space-y-3 pt-2">
-                <ErrorMsg msg={error} />
-                <SuccessMsg msg={msg} />
+              <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                      Username / Handle
+                    </label>
+                    <input
+                      type="text"
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      placeholder="e.g. alex_rivera"
+                      required
+                      className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                      Specialization / Title
+                    </label>
+                    <input
+                      type="text"
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value)}
+                      placeholder="e.g. Senior Editor, Lead Researcher"
+                      className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-bold text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
+                    />
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                    New Username
+                    Bio / Researcher Profile
                   </label>
-                  <input
-                    type="text"
-                    value={editUsername}
-                    onChange={(e) => setEditUsername(e.target.value)}
-                    placeholder="Enter username"
-                    autoFocus
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-sm font-bold text-[#111214] focus:outline-none focus:border-[#16171a]"
+                  <textarea
+                    rows={2}
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Brief description of what you analyze or write..."
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#f9fafb] border border-[#e8eaee] text-xs font-medium text-[#111214] focus:outline-none focus:ring-2 focus:ring-[#d2f84b]"
                   />
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-3 pt-1">
                   <button
                     type="submit"
                     disabled={saving}
                     className="px-6 py-2.5 rounded-full bg-[#16171a] hover:bg-black text-white text-xs font-extrabold transition shadow-sm disabled:opacity-40 cursor-pointer"
                   >
-                    {saving ? "Saving…" : "Save Username"}
+                    {saving ? "Saving…" : "Save Persona"}
                   </button>
                   <button
                     type="button"
@@ -1375,11 +1651,11 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
             </BentoCard>
           )}
 
-          {/* Change Password Card (Only for Authenticated Users) */}
+          {/* 3. CHANGE PASSWORD FORM */}
           {!isGuest && isChangingPwd && (
-            <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-extrabold text-[#111214]">Change Password</h3>
+            <BentoCard className="p-6 space-y-4 border border-[#16171a]/20 shadow-md bg-white">
+              <div className="flex items-center justify-between pb-2 border-b border-[#f0f2f5]">
+                <h3 className="text-base font-extrabold text-[#111214]">Change Account Password</h3>
                 <button
                   onClick={() => setIsChangingPwd(false)}
                   className="text-xs font-bold text-[#8c9099] hover:text-[#111214] cursor-pointer"
@@ -1387,11 +1663,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                   ✕
                 </button>
               </div>
-              <p className="text-xs text-[#5f6672] font-medium">
-                Ensure your account is protected with a secure password of at least 8 characters.
-              </p>
 
-              <form onSubmit={handleSavePassword} className="space-y-3.5 pt-2">
+              <form onSubmit={handleSavePassword} className="space-y-3.5 pt-1">
                 <ErrorMsg msg={pwdError} />
                 <SuccessMsg msg={pwdMsg} />
 
@@ -1402,40 +1675,41 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
                   <PasswordInput
                     value={oldPwd}
                     onChange={(e) => setOldPwd(e.target.value)}
-                    placeholder="Enter your current password"
+                    placeholder="Enter current password"
                     autoComplete="current-password"
                     required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                    New Password (min 8 chars)
-                  </label>
-                  <PasswordInput
-                    value={newPwd}
-                    onChange={(e) => setNewPwd(e.target.value)}
-                    placeholder="Enter new secure password"
-                    autoComplete="new-password"
-                    minLength={8}
-                    required
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                      New Password (min 8 chars)
+                    </label>
+                    <PasswordInput
+                      value={newPwd}
+                      onChange={(e) => setNewPwd(e.target.value)}
+                      placeholder="New password"
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
+                      Confirm New Password
+                    </label>
+                    <PasswordInput
+                      value={confirmPwd}
+                      onChange={(e) => setConfirmPwd(e.target.value)}
+                      placeholder="Repeat new password"
+                      autoComplete="new-password"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099] mb-1.5">
-                    Confirm New Password
-                  </label>
-                  <PasswordInput
-                    value={confirmPwd}
-                    onChange={(e) => setConfirmPwd(e.target.value)}
-                    placeholder="Repeat new password"
-                    autoComplete="new-password"
-                    required
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-3 pt-2">
                   <button
                     type="submit"
                     disabled={pwdSaving}
@@ -1455,40 +1729,113 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
             </BentoCard>
           )}
 
-          {/* Guest Sign-In Callout */}
-          {isGuest ? (
-            <BentoCard className="p-6 bg-[#f7fde6] border border-[#dcf589] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* 4. ACTIVITY & PERSPECTIVE TELEMETRY BENTO GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Metric 1 */}
+            <BentoCard className="p-4 space-y-1.5 bg-white">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Audit Volume</span>
+              <p className="text-2xl font-black text-[#111214]">{totalAnalyses}</p>
+              <p className="text-[11px] font-medium text-[#5f6672]">All-time analyzed texts</p>
+            </BentoCard>
+
+            {/* Metric 2 */}
+            <BentoCard className="p-4 space-y-1.5 bg-white">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Neutrality Index</span>
+              <p className="text-2xl font-black text-[#2e5200]">{neutralRatio}%</p>
+              <p className="text-[11px] font-medium text-[#5f6672]">Balanced & objective rate</p>
+            </BentoCard>
+
+            {/* Metric 3 */}
+            <BentoCard className="p-4 space-y-1.5 bg-white">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Sentiment Footprint</span>
+              <div className="flex items-center gap-1.5 pt-1">
+                <span className="text-xs font-bold text-[#2e5200]">+{positiveCount}</span>
+                <span className="text-xs font-bold text-gray-500">· {neutralCount} ·</span>
+                <span className="text-xs font-bold text-rose-600">-{negativeCount}</span>
+              </div>
+              <p className="text-[11px] font-medium text-[#5f6672]">Pos · Neu · Neg balance</p>
+            </BentoCard>
+
+            {/* Metric 4 */}
+            <BentoCard className="p-4 space-y-1.5 bg-white">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Storage Engine</span>
+              <p className="text-sm font-black text-[#111214] pt-1">
+                {isGuest ? "Local Sandbox" : "Supabase Cloud"}
+              </p>
+              <p className="text-[11px] font-medium text-[#5f6672]">
+                {isGuest ? "Temporary browser cache" : "PostgreSQL active sync"}
+              </p>
+            </BentoCard>
+          </div>
+
+          {/* 5. WORKSPACE PREFERENCES & DATA EXPORT */}
+          <BentoCard className="p-6 space-y-4 bg-white border border-[#e8eaee]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#f0f2f5]">
               <div>
-                <h4 className="font-extrabold text-sm text-[#111214]">Create an Account or Sign In</h4>
-                <p className="text-xs text-[#5f6672] mt-0.5 font-medium">
-                  Signed-in users get persistent bias history, aggregate analytics dashboards, and cloud sync.
-                </p>
+                <h3 className="text-base font-extrabold text-[#111214]">Workspace Preferences</h3>
+                <p className="text-xs font-medium text-[#717682]">Configure default context slant and manage data backups</p>
               </div>
               <button
-                onClick={() => setPage("login")}
-                className="px-5 py-2.5 rounded-full bg-[#16171a] text-white text-xs font-extrabold hover:bg-black transition whitespace-nowrap cursor-pointer"
-              >
-                Sign In / Register
-              </button>
-            </BentoCard>
-          ) : (
-            <div className="pt-4 flex items-center justify-between">
-              <button
                 type="button"
-                onClick={handleDeleteAccount}
-                className="px-4 py-2 rounded-full text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                onClick={handleExportData}
+                className="px-4 py-2 rounded-xl bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#16171a] text-xs font-bold border border-[#e8eaee] transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                Delete Account
-              </button>
-              <button
-                type="button"
-                onClick={onLogout}
-                className="px-5 py-2.5 rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold transition cursor-pointer"
-              >
-                Sign Out of Account
+                <IconDownload className="w-3.5 h-3.5" />
+                <span>Export JSON</span>
               </button>
             </div>
-          )}
+
+            {/* Context Selector */}
+            <div className="space-y-2 pt-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099]">
+                Default Analysis Context
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "general", label: "#General Writing" },
+                  { id: "job_post", label: "#Job Post" },
+                  { id: "academic", label: "#Academic" },
+                  { id: "news", label: "#News/Media" },
+                  { id: "social", label: "#Social Media" },
+                ].map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleContextChange(c.id)}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer",
+                      defaultContext === c.id
+                        ? "bg-[#16171a] text-white shadow-2xs"
+                        : "bg-[#f4f5f7] text-[#5f6672] hover:bg-[#e8eaee] hover:text-[#111214]"
+                    )}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-[#8c9099]">
+                Pre-selects this context whenever you open the Perspective Workspace.
+              </p>
+            </div>
+          </BentoCard>
+
+          {/* 6. DANGER ZONE & SESSION TERMINATION */}
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-[#e8eaee] px-1">
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              className="px-4 py-2 rounded-full text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer text-left sm:text-center"
+            >
+              Permanently Delete Account
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="px-6 py-2.5 rounded-full border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold transition cursor-pointer shadow-2xs"
+            >
+              Sign Out of Account
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -2239,12 +2586,25 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
           <header className="px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-4 border-b border-[#e8eaee]/60 shrink-0 relative bg-[#f4f5f7] z-10">
             {/* User Profile */}
             <div className="flex items-center gap-3">
-              {user ? (
-                <div className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold">
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.username || "User"}
+                  className="w-9 h-9 rounded-full object-cover border border-black/10 shrink-0 cursor-pointer shadow-2xs hover:opacity-90 transition"
+                  onClick={() => navigate("profile")}
+                />
+              ) : user ? (
+                <div
+                  className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:bg-black transition"
+                  onClick={() => navigate("profile")}
+                >
                   {user.username?.[0]?.toUpperCase() || "U"}
                 </div>
               ) : (
-                <div className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold">
+                <div
+                  className="w-9 h-9 rounded-full bg-[#16171a] text-white flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer hover:bg-black transition"
+                  onClick={() => navigate("profile")}
+                >
                   G
                 </div>
               )}
@@ -2467,7 +2827,7 @@ export default function App() {
     (async () => {
       try {
         const res = await api.get("/profile/");
-        const userData = { username: res.data.username, email: res.data.email };
+        const userData = { username: res.data.username, email: res.data.email, avatar: res.data.avatar || "" };
         cachedProfileData = res.data;
         lastProfileFetch = Date.now();
         localStorage.setItem("cached_user", JSON.stringify(userData));
@@ -2486,15 +2846,13 @@ export default function App() {
   }, []);
 
   const handleProfileUpdate = (u) => {
-    if (u.username) {
-      setUser((prev) => {
-        const next = prev ? { ...prev, username: u.username } : null;
-        if (next) localStorage.setItem("cached_user", JSON.stringify(next));
-        return next;
-      });
-      if (cachedProfileData) {
-        cachedProfileData = { ...cachedProfileData, username: u.username };
-      }
+    setUser((prev) => {
+      const next = prev ? { ...prev, ...u } : null;
+      if (next) localStorage.setItem("cached_user", JSON.stringify(next));
+      return next;
+    });
+    if (cachedProfileData) {
+      cachedProfileData = { ...cachedProfileData, ...u };
     }
   };
 

@@ -5,7 +5,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import TextAnalysis, PasswordResetToken, AnalysisFeedback
+from .models import TextAnalysis, PasswordResetToken, AnalysisFeedback, UserProfile
 from .utils import analyze_text
 import secrets
 from django.core.mail import send_mail
@@ -196,30 +196,56 @@ def change_password(request):
 # EDIT PROFILE
 # ---------------------------------------------------------------------------
 
-@api_view(['PATCH'])
+@api_view(['PATCH', 'POST'])
 @permission_classes([AllowAny])
 def edit_profile(request):
     user = request.user if (request.user and request.user.is_authenticated) else None
-    username = request.data.get('username', '').strip()
-    email = request.data.get('email', '').strip()
-
-    if not username:
-        return Response({'error': 'Username cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+    username = request.data.get('username', '').strip() if 'username' in request.data else None
+    email = request.data.get('email', '').strip() if 'email' in request.data else None
+    avatar = request.data.get('avatar', None)
+    bio = request.data.get('bio', None)
+    role = request.data.get('role', None)
 
     if user:
-        if user.username.startswith('user_'):
-            user.first_name = username
-        else:
-            if username != user.username and User.objects.filter(username=username).exists():
-                return Response({'error': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
-            user.username = username
+        profile_obj, _ = UserProfile.objects.get_or_create(user=user)
+        if username is not None:
+            if not username:
+                return Response({'error': 'Username cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+            if user.username.startswith('user_'):
+                user.first_name = username
+            else:
+                if username != user.username and User.objects.filter(username=username).exists():
+                    return Response({'error': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
+                user.username = username
         if email:
             user.email = email
         user.save()
+
+        if avatar is not None:
+            profile_obj.avatar = avatar
+        if bio is not None:
+            profile_obj.bio = bio.strip()
+        if role is not None:
+            profile_obj.role = role.strip()
+        profile_obj.save()
+
         display_name = user.first_name if (user.username.startswith('user_') and user.first_name) else user.username
-        return Response({'username': display_name, 'email': user.email})
+        return Response({
+            'username': display_name,
+            'email': user.email,
+            'avatar': profile_obj.avatar,
+            'bio': profile_obj.bio,
+            'role': profile_obj.role,
+        })
     else:
-        return Response({'username': username, 'email': email or 'guest@unbiasify.local', 'is_guest': True})
+        return Response({
+            'username': username or 'Guest Researcher',
+            'email': email or 'guest@unbiasify.local',
+            'avatar': avatar or '',
+            'bio': bio or '',
+            'role': role or 'Guest Session',
+            'is_guest': True
+        })
 
 
 # ---------------------------------------------------------------------------
@@ -397,11 +423,15 @@ def profile(request):
             negative=Count('id', filter=Q(sentiment__iexact='Negative')),
             neutral=Count('id', filter=Q(sentiment__iexact='Neutral')),
         )
+        profile_obj, _ = UserProfile.objects.get_or_create(user=user)
         display_name = user.first_name if (user.username.startswith('user_') and user.first_name) else user.username
         return Response({
             'username': display_name,
             'email': user.email,
             'date_joined': user.date_joined.strftime('%d %b %Y'),
+            'avatar': profile_obj.avatar or '',
+            'bio': profile_obj.bio or '',
+            'role': profile_obj.role or 'Perspective Researcher',
             'total_analyses': counts['total'] or 0,
             'positive': counts['positive'] or 0,
             'negative': counts['negative'] or 0,
@@ -412,6 +442,9 @@ def profile(request):
             'username': 'Guest Researcher',
             'email': 'guest@unbiasify.local',
             'date_joined': timezone.now().strftime('%d %b %Y'),
+            'avatar': '',
+            'bio': 'Guest Session · Try perspective detection in sandbox',
+            'role': 'Guest Researcher',
             'total_analyses': 0,
             'positive': 0,
             'negative': 0,
