@@ -1622,17 +1622,6 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
 
               {/* Right: Actions */}
               <div className="flex flex-wrap md:flex-col items-stretch gap-2 shrink-0">
-                {userAvatar && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPhotoModal(true)}
-                    className="px-4 py-2 rounded-xl bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#16171a] text-xs font-bold border border-[#e8eaee] transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <IconEye className="w-3.5 h-3.5 text-[#5f6672]" />
-                    <span>View Photo</span>
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
