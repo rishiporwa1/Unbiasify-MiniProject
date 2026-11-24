@@ -1151,11 +1151,6 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const [pwdMsg, setPwdMsg] = useState("");
   const [pwdError, setPwdError] = useState("");
 
-  // Default Context Preference
-  const [defaultContext, setDefaultContext] = useState(() => {
-    return localStorage.getItem("default_analysis_context") || "general";
-  });
-
   const fileInputRef = useRef(null);
   const isGuest = !user;
 
@@ -1392,28 +1387,6 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
     }
   };
 
-  const handleExportData = async () => {
-    try {
-      const res = await api.get("/history/");
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.data, null, 2));
-      const downloadAnchor = document.createElement("a");
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `unbiasify-analyses-${new Date().toISOString().split("T")[0]}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-      onNotify?.("Data Exported", "Your analyses history has been exported as JSON.");
-    } catch {
-      alert("No analyses history found to export.");
-    }
-  };
-
-  const handleContextChange = (ctx) => {
-    setDefaultContext(ctx);
-    localStorage.setItem("default_analysis_context", ctx);
-    onNotify?.("Preference Saved", `Default context set to #${ctx}`);
-  };
-
   const handleDeleteAccount = async () => {
     if (!window.confirm("Are you sure you want to permanently delete your Unbiasify account? This will erase all your profile data and saved bias analyses from the database.")) {
       return;
@@ -1431,10 +1404,6 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
   const displayName = profile?.username || (isGuest ? "Guest User" : user?.username || "User");
   const userAvatar = profile?.avatar || user?.avatar || "";
   const totalAnalyses = profile?.total_analyses || 0;
-  const neutralCount = profile?.neutral || 0;
-  const positiveCount = profile?.positive || 0;
-  const negativeCount = profile?.negative || 0;
-  const neutralRatio = totalAnalyses > 0 ? Math.round((neutralCount / totalAnalyses) * 100) : 100;
 
   return (
     <div className="space-y-6 max-w-4xl pb-8">
@@ -1729,98 +1698,8 @@ function ProfilePage({ user, onProfileUpdate, onLogout, setPage, onNotify }) {
             </BentoCard>
           )}
 
-          {/* 4. ACTIVITY & PERSPECTIVE TELEMETRY BENTO GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Metric 1 */}
-            <BentoCard className="p-4 space-y-1.5 bg-white">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Audit Volume</span>
-              <p className="text-2xl font-black text-[#111214]">{totalAnalyses}</p>
-              <p className="text-[11px] font-medium text-[#5f6672]">All-time analyzed texts</p>
-            </BentoCard>
-
-            {/* Metric 2 */}
-            <BentoCard className="p-4 space-y-1.5 bg-white">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Neutrality Index</span>
-              <p className="text-2xl font-black text-[#2e5200]">{neutralRatio}%</p>
-              <p className="text-[11px] font-medium text-[#5f6672]">Balanced & objective rate</p>
-            </BentoCard>
-
-            {/* Metric 3 */}
-            <BentoCard className="p-4 space-y-1.5 bg-white">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Sentiment Footprint</span>
-              <div className="flex items-center gap-1.5 pt-1">
-                <span className="text-xs font-bold text-[#2e5200]">+{positiveCount}</span>
-                <span className="text-xs font-bold text-gray-500">· {neutralCount} ·</span>
-                <span className="text-xs font-bold text-rose-600">-{negativeCount}</span>
-              </div>
-              <p className="text-[11px] font-medium text-[#5f6672]">Pos · Neu · Neg balance</p>
-            </BentoCard>
-
-            {/* Metric 4 */}
-            <BentoCard className="p-4 space-y-1.5 bg-white">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#8c9099]">Storage Engine</span>
-              <p className="text-sm font-black text-[#111214] pt-1">
-                {isGuest ? "Local Sandbox" : "Supabase Cloud"}
-              </p>
-              <p className="text-[11px] font-medium text-[#5f6672]">
-                {isGuest ? "Temporary browser cache" : "PostgreSQL active sync"}
-              </p>
-            </BentoCard>
-          </div>
-
-          {/* 5. WORKSPACE PREFERENCES & DATA EXPORT */}
-          <BentoCard className="p-6 space-y-4 bg-white border border-[#e8eaee]">
-            <div className="flex items-center justify-between pb-2 border-b border-[#f0f2f5]">
-              <div>
-                <h3 className="text-base font-extrabold text-[#111214]">Workspace Preferences</h3>
-                <p className="text-xs font-medium text-[#717682]">Configure default context slant and manage data backups</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleExportData}
-                className="px-4 py-2 rounded-xl bg-[#f4f5f7] hover:bg-[#e8eaee] text-[#16171a] text-xs font-bold border border-[#e8eaee] transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <IconDownload className="w-3.5 h-3.5" />
-                <span>Export JSON</span>
-              </button>
-            </div>
-
-            {/* Context Selector */}
-            <div className="space-y-2 pt-1">
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#8c9099]">
-                Default Analysis Context
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: "general", label: "#General Writing" },
-                  { id: "job_post", label: "#Job Post" },
-                  { id: "academic", label: "#Academic" },
-                  { id: "news", label: "#News/Media" },
-                  { id: "social", label: "#Social Media" },
-                ].map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => handleContextChange(c.id)}
-                    className={cn(
-                      "px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer",
-                      defaultContext === c.id
-                        ? "bg-[#16171a] text-white shadow-2xs"
-                        : "bg-[#f4f5f7] text-[#5f6672] hover:bg-[#e8eaee] hover:text-[#111214]"
-                    )}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-[#8c9099]">
-                Pre-selects this context whenever you open the Perspective Workspace.
-              </p>
-            </div>
-          </BentoCard>
-
-          {/* 6. DANGER ZONE & SESSION TERMINATION */}
-          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-[#e8eaee] px-1">
+          {/* DANGER ZONE & SESSION TERMINATION */}
+          <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-[#e8eaee] px-1">
             <button
               type="button"
               onClick={handleDeleteAccount}
