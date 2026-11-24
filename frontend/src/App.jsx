@@ -2791,9 +2791,9 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
       ];
 
   return (
-    <div className="min-h-screen w-full bg-[#d7ebd0] p-0 sm:p-3 md:p-4 lg:p-6 flex items-center justify-center font-sans antialiased text-[#111214]">
+    <div className="h-screen w-screen bg-[#d7ebd0] p-2 sm:p-3 md:p-4 lg:p-5 flex items-center justify-center font-sans antialiased text-[#111214] overflow-hidden">
       {/* Outer Rounded Container matching the Flux Template ("Cover") */}
-      <div className="w-full max-w-[1440px] bg-[#f4f5f7] rounded-none sm:rounded-[1.8rem] md:rounded-[2.4rem] shadow-2xl border-0 sm:border border-black/5 overflow-hidden flex flex-col md:flex-row relative my-auto">
+      <div className="w-full max-w-[1440px] h-full bg-[#f4f5f7] rounded-[1.4rem] sm:rounded-[1.8rem] md:rounded-[2.4rem] shadow-2xl border border-black/5 overflow-hidden flex flex-col md:flex-row relative">
         {/* Mobile Navigation Drawer Backdrop */}
         {mobileMenuOpen && (
           <div
@@ -2805,7 +2805,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
         {/* Left Dark Sidebar (#16171a) - Desktop static, Mobile slide-out drawer */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-72 bg-[#16171a] p-5 flex flex-col justify-between shrink-0 text-white overflow-y-auto transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:w-64 md:p-5 lg:p-6 md:z-auto",
+            "fixed inset-y-0 left-0 z-50 w-72 bg-[#16171a] p-5 flex flex-col justify-between shrink-0 text-white overflow-y-auto transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:w-64 md:p-5 lg:p-6 md:h-full md:z-auto",
             mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
           )}
         >
@@ -2868,7 +2868,7 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
         </aside>
 
         {/* Right Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#f4f5f7]">
+        <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#f4f5f7]">
           {/* Top Bar */}
           <header className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 flex items-center justify-between gap-3 border-b border-[#e8eaee]/60 shrink-0 relative bg-[#f4f5f7] z-10">
             {/* Left: Mobile Hamburger + User Profile */}
@@ -3045,8 +3045,8 @@ function AppScaffold({ user, onLogout, onLogin, onProfileUpdate }) {
             </div>
           </header>
 
-          {/* Dynamic Page View */}
-          <div className="p-4 sm:p-5 lg:p-6 flex-1 min-h-0">
+          {/* Dynamic Page View - Scroll strictly inside the cover */}
+          <div className="p-4 sm:p-5 lg:p-6 flex-1 overflow-y-auto min-h-0">
             {page === "home" && (
               <AnalyzePage
                 user={user}
